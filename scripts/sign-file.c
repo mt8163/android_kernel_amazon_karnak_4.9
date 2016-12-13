@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 	}
 	x509_name = argv[2];
 	module_name = argv[3];
-	if (argc == 5) {
+	if (argc == 5 && strcmp(argv[3], argv[4]) != 0) {
 		dest_name = argv[4];
 		replace_orig = false;
 	} else {
