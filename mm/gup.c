@@ -1422,8 +1422,8 @@ static int gup_huge_pmd(pmd_t orig, pmd_t *pmdp, unsigned long addr,
 		refs++;
 	} while (addr += PAGE_SIZE, addr != end);
 
-	head = try_get_compound_head(pmd_page(orig), refs);
-	if (!head) {
+	head = compound_head(pmd_page(orig));
+	if (!page_cache_add_speculative(head, refs)) {
 		*nr -= refs;
 		return 0;
 	}
@@ -1456,8 +1456,8 @@ static int gup_huge_pud(pud_t orig, pud_t *pudp, unsigned long addr,
 		refs++;
 	} while (addr += PAGE_SIZE, addr != end);
 
-	head = try_get_compound_head(pud_page(orig), refs);
-	if (!head) {
+	head = compound_head(pud_page(orig));
+	if (!page_cache_add_speculative(head, refs)) {
 		*nr -= refs;
 		return 0;
 	}
@@ -1491,8 +1491,8 @@ static int gup_huge_pgd(pgd_t orig, pgd_t *pgdp, unsigned long addr,
 		refs++;
 	} while (addr += PAGE_SIZE, addr != end);
 
-	head = try_get_compound_head(pgd_page(orig), refs);
-	if (!head) {
+	head = compound_head(pgd_page(orig));
+	if (!page_cache_add_speculative(head, refs)) {
 		*nr -= refs;
 		return 0;
 	}
