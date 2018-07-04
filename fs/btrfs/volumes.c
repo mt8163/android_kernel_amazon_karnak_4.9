@@ -6371,7 +6371,7 @@ static int btrfs_check_chunk_valid(struct btrfs_root *root,
 	u16 sub_stripes;
 	u64 type;
 	u64 features;
-	int mixed = 0;
+	bool mixed = false;
 
 	length = btrfs_chunk_length(leaf, chunk);
 	stripe_len = btrfs_chunk_stripe_len(leaf, chunk);
@@ -6413,26 +6413,27 @@ static int btrfs_check_chunk_valid(struct btrfs_root *root,
 		return -EIO;
 	}
 
-	if (!(type & BTRFS_BLOCK_GROUP_TYPE_MASK)) {
-		btrfs_err(fs_info, "missing chunk type flag: %llu", type);
+	if ((type & BTRFS_BLOCK_GROUP_TYPE_MASK) == 0) {
+		btrfs_err(root->fs_info, "missing chunk type flag: 0x%llx", type);
 		return -EIO;
 	}
 
 	if ((type & BTRFS_BLOCK_GROUP_SYSTEM) &&
-	(type & (BTRFS_BLOCK_GROUP_METADATA | BTRFS_BLOCK_GROUP_DATA))) {
-		btrfs_err(fs_info, "duplicate chunk type flag: %llu", type);
+	    (type & (BTRFS_BLOCK_GROUP_METADATA | BTRFS_BLOCK_GROUP_DATA))) {
+		btrfs_err(root->fs_info,
+			"system chunk with data or metadata type: 0x%llx", type);
 		return -EIO;
 	}
 
-	features = btrfs_super_incompat_flags(fs_info->super_copy);
+	features = btrfs_super_incompat_flags(root->fs_info->super_copy);
 	if (features & BTRFS_FEATURE_INCOMPAT_MIXED_GROUPS)
-		mixed = 1;
+		mixed = true;
 
 	if (!mixed) {
-		if (type &
-		(BTRFS_BLOCK_GROUP_METADATA & BTRFS_BLOCK_GROUP_DATA)) {
-			btrfs_err(fs_info,
-			"mixed chunk type flag in non-mixed mode: %llu", type);
+		if ((type & BTRFS_BLOCK_GROUP_METADATA) &&
+		    (type & BTRFS_BLOCK_GROUP_DATA)) {
+			btrfs_err(root->fs_info,
+			"mixed chunk type in non-mixed mode: 0x%llx", type);
 			return -EIO;
 		}
 	}
