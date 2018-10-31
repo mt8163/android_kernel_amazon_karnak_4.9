@@ -14,6 +14,7 @@ TARGETS += memfd
 TARGETS += memory-hotplug
 TARGETS += mount
 TARGETS += net
+TARGETS += netfilter
 TARGETS += nsfs
 TARGETS += powerpc
 TARGETS += pstore
