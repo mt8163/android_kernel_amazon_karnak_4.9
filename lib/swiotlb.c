@@ -275,7 +275,7 @@ swiotlb_late_init_with_default_size(size_t default_size)
 	}
 	if (order != get_order(bytes)) {
 		pr_warn("only able to allocate %ld MB\n",
-		       (PAGE_SIZE << order) >> 20);
+			(PAGE_SIZE << order) >> 20);
 		io_tlb_nslabs = SLABS_PER_PAGE << order;
 	}
 	rc = swiotlb_late_init_with_tbl(vstart, io_tlb_nslabs);
