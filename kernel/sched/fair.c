@@ -5142,8 +5142,8 @@ static int compute_energy(struct energy_env *eenv)
 				if (only_lv1_sd)
 					return 0;
 #endif
-				if (cpumask_equal(sched_group_cpus(sg), sched_group_cpus(eenv->sg_top)))
-					goto next_cpu;
+				if (cpumask_equal(sched_group_cpus(sg), sched_group_cpus(eenv->sg_top)) &&
+					sd->child)
 			} while (sg = sg->next, sg != sd->groups);
 		}
 		/*
