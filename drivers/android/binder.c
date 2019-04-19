@@ -1154,7 +1154,91 @@ static int to_userspace_prio(int policy, int kernel_priority)
 	if (is_fair_policy(policy))
 		return PRIO_TO_NICE(kernel_priority);
 	else
-		return MAX_USER_RT_PRIO - 1 - kernel_priority;
+		mm = get_task_mm(proc->tsk);
+
+	if (mm) {
+		down_write(&mm->mmap_sem);
+		if (!mmget_still_valid(mm)) {
+			if (allocate == 0)
+				goto free_range;
+			goto err_no_vma;
+		}
+
+		vma = proc->vma;
+		if (vma && mm != proc->vma_vm_mm) {
+			pr_err("%d: vma mm and task mm mismatch\n",
+				proc->pid);
+			vma = NULL;
+		}
+	}
+
+	if (allocate == 0)
+		goto free_range;
+
+	if (vma == NULL) {
+		pr_err("%d: binder_alloc_buf failed to map pages in userspace, no vma\n",
+			proc->pid);
+		goto err_no_vma;
+	}
+
+	for (page_addr = start; page_addr < end; page_addr += PAGE_SIZE) {
+		int ret;
+
+		page = &proc->pages[(page_addr - proc->buffer) / PAGE_SIZE];
+
+		BUG_ON(*page);
+		*page = alloc_page(GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO);
+		if (*page == NULL) {
+			pr_err("%d: binder_alloc_buf failed for page at %pK\n",
+				proc->pid, page_addr);
+			goto err_alloc_page_failed;
+		}
+		ret = map_kernel_range_noflush((unsigned long)page_addr,
+					PAGE_SIZE, PAGE_KERNEL, page);
+		flush_cache_vmap((unsigned long)page_addr,
+				(unsigned long)page_addr + PAGE_SIZE);
+		if (ret != 1) {
+			pr_err("%d: binder_alloc_buf failed to map page at %pK in kernel\n",
+			       proc->pid, page_addr);
+			goto err_map_kernel_failed;
+		}
+		user_page_addr =
+			(uintptr_t)page_addr + proc->user_buffer_offset;
+		ret = vm_insert_page(vma, user_page_addr, page[0]);
+		if (ret) {
+			pr_err("%d: binder_alloc_buf failed to map page at %lx in userspace\n",
+			       proc->pid, user_page_addr);
+			goto err_vm_insert_page_failed;
+		}
+		/* vm_insert_page does not seem to increment the refcount */
+	}
+	if (mm) {
+		up_write(&mm->mmap_sem);
+		mmput(mm);
+	}
+	return 0;
+
+free_range:
+	for (page_addr = end - PAGE_SIZE; page_addr >= start;
+	     page_addr -= PAGE_SIZE) {
+		page = &proc->pages[(page_addr - proc->buffer) / PAGE_SIZE];
+		if (vma)
+			zap_page_range(vma, (uintptr_t)page_addr +
+				proc->user_buffer_offset, PAGE_SIZE, NULL);
+err_vm_insert_page_failed:
+		unmap_kernel_range((unsigned long)page_addr, PAGE_SIZE);
+err_map_kernel_failed:
+		__free_page(*page);
+		*page = NULL;
+err_alloc_page_failed:
+		;
+	}
+err_no_vma:
+	if (mm) {
+		up_write(&mm->mmap_sem);
+		mmput(mm);
+	}
+	return -ENOMEM;
 }
 
 static int to_kernel_prio(int policy, int user_priority)
