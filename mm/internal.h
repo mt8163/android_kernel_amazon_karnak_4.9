@@ -161,6 +161,7 @@ extern void prep_compound_page(struct page *page, unsigned int order);
 extern void post_alloc_hook(struct page *page, unsigned int order,
 					gfp_t gfp_flags);
 extern int user_min_free_kbytes;
+extern atomic_long_t kswapd_waiters;
 
 #ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
 static inline int is_cma_page(struct page *page)
