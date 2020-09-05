@@ -966,7 +966,11 @@ static int __ref kernel_init(void *unused)
 	kernel_init_freeable();
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
+/*
+dirty workaround for uart and fixes early panic
+thanks to @carlitros900
 	free_initmem();
+*/
 	mark_readonly();
 	system_state = SYSTEM_RUNNING;
 	numa_default_policy();
