@@ -21,6 +21,9 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
 
+#ifdef CONFIG_AMAZON_METRICS_LOG
+#include <linux/metricslog.h>
+#endif
 #include "core.h"
 #include "bus.h"
 #include "mmc_ops.h"
@@ -66,6 +69,50 @@ static const unsigned int sd_au_size[] = {
 			__res |= resp[__off-1] << ((32 - __shft) % 32);	\
 		__res & __mask;						\
 	})
+
+#ifdef CONFIG_AMAZON_METRICS_LOG
+#define METRICS_TIMEOUT_DELAY      (3 * 3600 * HZ)
+#define SD_TIMEOUT_THRESHOLD       1000
+
+void sd_metrics_timeout_work(struct work_struct *work)
+{
+	struct mmc_host *host = container_of(work, struct mmc_host, metrics_timeout_work.work);
+	char buf[256] = {0};
+
+	if ((u64)atomic64_read(&host->data_timeout_count) > SD_TIMEOUT_THRESHOLD) {
+		mutex_lock(&host->cid_mutex);
+		snprintf(buf, sizeof(buf),
+			"%s:def:sdcard_datatimeout_ratio=%llu;CT;1,"
+			"sdcard_datatimeout_count=%llu;CT;1,sdcard_data_count=%llu;CT;1:NR",
+			host->cid, div64_u64(((u64)atomic64_read(&host->data_timeout_count)*1000000),(u64)atomic64_read(&host->data_count)),
+			(u64)atomic64_read(&host->data_timeout_count),
+			(u64)atomic64_read(&host->data_count));
+		mutex_unlock(&host->cid_mutex);
+
+		log_to_metrics(ANDROID_LOG_INFO, "SDTimeoutEvent", buf);
+	}
+
+	mod_delayed_work(system_wq, &host->metrics_timeout_work, METRICS_TIMEOUT_DELAY);
+}
+
+static void metrics_sd_detect(struct mmc_host *host, bool inserted)
+{
+	if (inserted) {
+		mutex_lock(&host->cid_mutex);
+		snprintf(host->cid, sizeof(host->cid), "%08x%08x%08x%08x",
+			host->card->raw_cid[0], host->card->raw_cid[1],
+			host->card->raw_cid[2], host->card->raw_cid[3]);
+		mutex_unlock(&host->cid_mutex);
+
+		mod_delayed_work(system_wq, &host->metrics_timeout_work,
+				METRICS_TIMEOUT_DELAY);
+	} else {
+		cancel_delayed_work(&host->metrics_timeout_work);
+		atomic64_set(&host->data_timeout_count, 0);
+		atomic64_set(&host->data_count, 0);
+	}
+}
+#endif
 
 /*
  * Given the decoded CSD structure, decode the raw CID to our CID structure.
@@ -245,6 +292,8 @@ static int mmc_read_ssr(struct mmc_card *card)
 
 	for (i = 0; i < 16; i++)
 		card->raw_ssr[i] = be32_to_cpu(raw_ssr[i]);
+
+	card->sd_speed_class = card->raw_ssr[2]>>24;
 
 	kfree(raw_ssr);
 
@@ -684,7 +733,8 @@ MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
-
+MMC_DEV_ATTR(sclass, "0x%0x\n", card->sd_speed_class);
+MMC_DEV_ATTR(timing, "%u\n", (&card->host->ios)->timing);
 
 static ssize_t mmc_dsr_show(struct device *dev,
                            struct device_attribute *attr,
@@ -718,6 +768,8 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_serial.attr,
 	&dev_attr_ocr.attr,
 	&dev_attr_dsr.attr,
+	&dev_attr_sclass.attr,
+	&dev_attr_timing.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(sd_std);
@@ -847,6 +899,9 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 	bool reinit)
 {
 	int err;
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	int retries;
+#endif
 
 	if (!reinit) {
 		/*
@@ -873,7 +928,26 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 		/*
 		 * Fetch switch information from card.
 		 */
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+		for (retries = 1; retries <= 3; retries++) {
+			err = mmc_read_switch(card);
+			if (!err) {
+				if (retries > 1) {
+					printk(KERN_WARNING
+					       "%s: recovered\n",
+					       mmc_hostname(host));
+				}
+				break;
+			} else {
+				printk(KERN_WARNING
+				       "%s: read switch failed (attempt %d)\n",
+				       mmc_hostname(host), retries);
+			}
+		}
+#else
 		err = mmc_read_switch(card);
+#endif
+
 		if (err)
 			return err;
 	}
@@ -927,7 +1001,7 @@ unsigned mmc_sd_get_max_clock(struct mmc_card *card)
  * In the case of a resume, "oldcard" will contain the card
  * we're trying to reinitialise.
  */
-static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
+int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	struct mmc_card *oldcard)
 {
 	struct mmc_card *card;
@@ -1071,7 +1145,11 @@ static int mmc_sd_alive(struct mmc_host *host)
  */
 static void mmc_sd_detect(struct mmc_host *host)
 {
-	int err;
+	int err = 0;
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	int reinit_err = 0;
+	int retries = 5;
+#endif
 
 	BUG_ON(!host);
 	BUG_ON(!host->card);
@@ -1081,11 +1159,34 @@ static void mmc_sd_detect(struct mmc_host *host)
 	/*
 	 * Just check if our card has been removed.
 	 */
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	while(retries) {
+		err = mmc_send_status(host->card, NULL);
+		if (err) {
+			mmc_power_cycle(host, host->card->ocr);
+			reinit_err = mmc_sd_init_card(host, host->card->ocr, host->card);
+			printk(KERN_ERR "%s(%s): Re-init card rc = %d (retries = %d)\n",
+					__func__, mmc_hostname(host), reinit_err, retries);
+			retries--;
+			udelay(5);
+			continue;
+		}
+		break;
+	}
+	if (!retries) {
+		printk(KERN_ERR "%s(%s): Unable to re-detect card (%d)\n",
+		       __func__, mmc_hostname(host), err);
+	}
+#else
 	err = _mmc_detect_card_removed(host);
+#endif
 
 	mmc_put_card(host->card);
 
 	if (err) {
+#ifdef CONFIG_AMAZON_METRICS_LOG
+		metrics_sd_detect(host, false);
+#endif
 		mmc_sd_remove(host);
 
 		mmc_claim_host(host);
@@ -1143,6 +1244,9 @@ static int mmc_sd_suspend(struct mmc_host *host)
 static int _mmc_sd_resume(struct mmc_host *host)
 {
 	int err = 0;
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	int retries;
+#endif
 
 	BUG_ON(!host);
 	BUG_ON(!host->card);
@@ -1153,7 +1257,23 @@ static int _mmc_sd_resume(struct mmc_host *host)
 		goto out;
 
 	mmc_power_up(host, host->card->ocr);
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	retries = 5;
+	while (retries) {
+		err = mmc_sd_init_card(host, host->card->ocr, host->card);
+
+		if (err) {
+			printk(KERN_ERR "%s: Re-init card rc = %d (retries = %d)\n",
+			       mmc_hostname(host), err, retries);
+			mdelay(5);
+			retries--;
+			continue;
+		}
+		break;
+	}
+#else
 	err = mmc_sd_init_card(host, host->card->ocr, host->card);
+#endif
 	mmc_card_clr_suspended(host->card);
 
 out:
@@ -1228,6 +1348,9 @@ int mmc_attach_sd(struct mmc_host *host)
 {
 	int err;
 	u32 ocr, rocr;
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	int retries;
+#endif
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
@@ -1264,15 +1387,35 @@ int mmc_attach_sd(struct mmc_host *host)
 	/*
 	 * Detect and init the card.
 	 */
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	retries = 5;
+	while (retries) {
+		err = mmc_sd_init_card(host, rocr, NULL);
+		if (err) {
+			retries--;
+			continue;
+		}
+		break;
+	}
+
+	if (!retries) {
+		printk(KERN_ERR "%s: mmc_sd_init_card() failure (err = %d)\n",
+		       mmc_hostname(host), err);
+		goto err;
+	}
+#else
 	err = mmc_sd_init_card(host, rocr, NULL);
 	if (err)
 		goto err;
+#endif
 
 	mmc_release_host(host);
 	err = mmc_add_card(host->card);
 	if (err)
 		goto remove_card;
-
+#ifdef CONFIG_AMAZON_METRICS_LOG
+	metrics_sd_detect(host, true);
+#endif
 	mmc_claim_host(host);
 	return 0;
 

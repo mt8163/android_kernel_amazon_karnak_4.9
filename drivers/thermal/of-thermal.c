@@ -133,6 +133,26 @@ int of_thermal_get_ntrips(struct thermal_zone_device *tz)
 }
 EXPORT_SYMBOL_GPL(of_thermal_get_ntrips);
 
+#ifdef CONFIG_AMAZON_THERMAL
+/**
+ * of_thermal_set_ntrips - function to set number of available trip
+ *			   points.
+ * @tz: pointer to a thermal zone
+ * @trips: number of trips to set
+ *
+ * This function is a globally visible wrapper to set number of trip points
+ * stored in the local struct __thermal_zone
+ */
+void of_thermal_set_ntrips(struct thermal_zone_device *tz, unsigned int trips)
+{
+	struct __thermal_zone *data = tz->devdata;
+
+	tz->trips = trips;
+	data->ntrips = trips;
+}
+EXPORT_SYMBOL_GPL(of_thermal_set_ntrips);
+#endif
+
 /**
  * of_thermal_is_trip_valid - function to check if trip point is valid
  *
@@ -299,8 +319,14 @@ static int of_thermal_get_trip_type(struct thermal_zone_device *tz, int trip,
 	if (trip >= data->ntrips || trip < 0)
 		return -EDOM;
 
+#ifdef CONFIG_AMAZON_THERMAL
+	if (trip == (data->ntrips - 1))
+		*type = THERMAL_TRIP_CRITICAL;
+	else
+		*type = THERMAL_TRIP_PASSIVE;
+#else
 	*type = data->trips[trip].type;
-
+#endif
 	return 0;
 }
 

@@ -1255,6 +1255,10 @@ static int spi_init_queue(struct spi_master *master)
 {
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
+#ifdef CONFIG_MTK_SPI_AFFINITY
+	long rc;
+	struct cpumask affinity_mask;
+#endif
 	master->running = false;
 	master->busy = false;
 
@@ -1268,6 +1272,13 @@ static int spi_init_queue(struct spi_master *master)
 	}
 	kthread_init_work(&master->pump_messages, spi_pump_messages);
 
+#ifdef CONFIG_MTK_SPI_AFFINITY
+	cpumask_clear(&affinity_mask);
+	cpumask_set_cpu(1, &affinity_mask);
+	rc = sched_setaffinity(master->kworker_task->pid, &affinity_mask);
+	if (rc < 0)
+		pr_err("%s: could not set CPU affinity. (%ld)\n", __func__, rc);
+#endif
 	/*
 	 * Master config will indicate if this controller should run the
 	 * message pump with high (realtime) priority to reduce the transfer
@@ -1275,12 +1286,15 @@ static int spi_init_queue(struct spi_master *master)
 	 * request and the scheduling of the message pump thread. Without this
 	 * setting the message pump thread will remain at default priority.
 	 */
+#ifndef CONFIG_SND_SOC_MT8163_AMZN
 	if (master->rt) {
+#endif
 		dev_info(&master->dev,
 			"will run message pump with realtime priority\n");
 		sched_setscheduler(master->kworker_task, SCHED_FIFO, &param);
+#ifndef CONFIG_SND_SOC_MT8163_AMZN
 	}
-
+#endif
 	return 0;
 }
 

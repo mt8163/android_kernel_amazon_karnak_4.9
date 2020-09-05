@@ -81,7 +81,7 @@ static void read_cache_pages_invalidate_pages(struct address_space *mapping,
  * Hides the details of the LRU cache etc from the filesystems.
  */
 int read_cache_pages(struct address_space *mapping, struct list_head *pages,
-			int (*filler)(void *, struct page *), void *data)
+			int (*filler)(struct file *, struct page *), void *data)
 {
 	struct page *page;
 	int ret = 0;
@@ -159,6 +159,12 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
 	int ret = 0;
 	loff_t isize = i_size_read(inode);
 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	if (!(filp->f_mode & (FMODE_WRITE | FMODE_WRITE_IOCTL)) &&
+	    !(mapping->host->i_state & I_NEW))
+		gfp_mask |= __GFP_CMA;
+#endif
 
 	if (isize == 0)
 		goto out;

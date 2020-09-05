@@ -106,4 +106,8 @@ source "drivers/staging/greybus/Kconfig"
 
 source "drivers/staging/vc04_services/Kconfig"
 
+source "drivers/staging/nanohub/Kconfig"
+
+source "drivers/staging/amazon/Kconfig"
+
 endif # STAGING

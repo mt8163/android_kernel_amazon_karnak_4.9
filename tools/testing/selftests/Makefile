@@ -13,7 +13,6 @@ TARGETS += membarrier
 TARGETS += memfd
 TARGETS += memory-hotplug
 TARGETS += mount
-TARGETS += mqueue
 TARGETS += net
 TARGETS += nsfs
 TARGETS += powerpc

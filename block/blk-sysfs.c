@@ -704,7 +704,7 @@ int blk_register_queue(struct gendisk *disk)
 	kobject_uevent(&q->kobj, KOBJ_ADD);
 
 	if (q->mq_ops)
-		blk_mq_register_dev(dev, q);
+		__blk_mq_register_dev(dev, q);
 
 	if (!q->request_fn)
 		return 0;

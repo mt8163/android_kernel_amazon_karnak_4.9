@@ -32,6 +32,10 @@ extern char *migrate_reason_names[MR_TYPES];
 
 #ifdef CONFIG_MIGRATION
 
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+extern int migrate_replace_page(struct page *oldpage, struct page *newpage);
+#endif
+
 extern void putback_movable_pages(struct list_head *l);
 extern int migrate_page(struct address_space *,
 			struct page *, struct page *, enum migrate_mode);
@@ -50,6 +54,11 @@ extern int migrate_page_move_mapping(struct address_space *mapping,
 		struct buffer_head *head, enum migrate_mode mode,
 		int extra_count);
 #else
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+static inline int migrate_replace_page(struct page *oldpage,
+		struct page *newpage) { return -ENOSYS; }
+#endif
 
 static inline void putback_movable_pages(struct list_head *l) {}
 static inline int migrate_pages(struct list_head *l, new_page_t new,

@@ -131,6 +131,9 @@ static void __uart_start(struct tty_struct *tty)
 	struct uart_state *state = tty->driver_data;
 	struct uart_port *port = state->uart_port;
 
+	if (port && port->ops->wake_peer)
+		port->ops->wake_peer(port);
+
 	if (port && !uart_tx_stopped(port))
 		port->ops->start_tx(port);
 }
@@ -2162,7 +2165,7 @@ int uart_resume_port(struct uart_driver *drv, struct uart_port *uport)
 	/*
 	 * Re-enable the console device after suspending.
 	 */
-	if (uart_console(uport)) {
+	if (console_suspend_enabled && uart_console(uport)) {
 		/*
 		 * First try to use the console cflag setting.
 		 */

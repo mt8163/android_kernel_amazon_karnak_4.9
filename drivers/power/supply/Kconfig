@@ -511,4 +511,13 @@ config AXP20X_POWER
 	  This driver provides support for the power supply features of
 	  AXP20x PMIC.
 
+config DUMMY_AC
+	bool "Dummy AC power supply driver"
+	default n
+	help
+	  This enables the Dummy AC driver.
+	  Say Y here to enable support for Dummy AC driver
+
+source "drivers/power/supply/mediatek/battery/Kconfig"
+
 endif # POWER_SUPPLY

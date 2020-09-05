@@ -174,6 +174,48 @@ static struct sysrq_key_op sysrq_sync_op = {
 	.enable_mask	= SYSRQ_ENABLE_SYNC,
 };
 
+
+static void sysrq_handle_wtd(int key)
+{
+	DEFINE_SPINLOCK(wdt_test_lock);
+
+	spin_lock(&wdt_test_lock);
+	while(1);
+
+}
+
+static struct sysrq_key_op sysrq_wtd_op = {
+	.handler	= sysrq_handle_wtd,
+	.help_msg	= "WTD(s)",
+	.action_msg	= "Watchdog timeout",
+	.enable_mask	= SYSRQ_ENABLE_BOOT,
+};
+
+#ifdef CONFIG_MEDIATEK_WATCHDOG
+void mtk_wdt_force_hw_wdt(void);
+#endif
+
+static void sysrq_handle_hw_wtd(int key)
+{
+	DEFINE_SPINLOCK(wdt_test_lock);
+
+	spin_lock(&wdt_test_lock);
+#ifdef CONFIG_MEDIATEK_WATCHDOG
+	mtk_wdt_force_hw_wdt();
+#endif
+	while(1);
+
+}
+
+static struct sysrq_key_op sysrq_hw_wtd_op = {
+	.handler	= sysrq_handle_hw_wtd,
+	.help_msg	= "WTD(s)",
+	.action_msg	= "HW_Watchdog timeout",
+	.enable_mask	= SYSRQ_ENABLE_BOOT,
+};
+
+
+
 static void sysrq_handle_show_timers(int key)
 {
 	sysrq_timer_list_show();
@@ -484,9 +526,9 @@ static struct sysrq_key_op *sysrq_key_table[36] = {
 	/* x: May be registered on mips for TLB dump */
 	/* x: May be registered on ppc/powerpc for xmon */
 	/* x: May be registered on sparc64 for global PMU dump */
-	NULL,				/* x */
+	&sysrq_wtd_op,				/* x */
 	/* y: May be registered on sparc64 for global register dump */
-	NULL,				/* y */
+	&sysrq_hw_wtd_op,			/* y */
 	&sysrq_ftrace_dump_op,		/* z */
 };
 

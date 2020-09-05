@@ -1,5 +1,8 @@
 /*
  * USB PHY defines
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * These APIs may be used between USB controllers.  USB device drivers
  * (for either host or peripheral roles) don't use these calls; they
@@ -77,6 +80,7 @@ struct usb_phy {
 	unsigned int		 flags;
 
 	enum usb_phy_type	type;
+	enum usb_otg_state	state;
 	enum usb_phy_events	last_event;
 
 	struct usb_otg		*otg;

@@ -479,6 +479,42 @@ config SRAM
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
 
+config MDUMP
+	bool "Generic memory dump"
+	default n
+	help
+	  The module allow support mdump feature, It need bootloader support. when
+	  panic, it will do a mark, and bootloader can store all memory to analyze.
+
+	  If unsure, say N.
+
+config MDUMP_COMPRESS
+	bool "Compress memory dump"
+	default n
+	help
+	  The module supports compressed ramdump, which allows ramdump to be written
+	  to userdata partition instead of a dedicate DUMP partition.
+
+	  If unsure, say N.
+
+config MDUMP_BUFFER_ADDRESS
+	hex "MDUMP Memory Buffer Address"
+	default 0x4BFC0000
+	depends on MDUMP
+	help
+	  Set mdump buffer address for mdump module. This address will share with bootloader
+	  Make sure you also changed this value on bootloader config code
+
+config MDUMP_MESSAGE_SIZE
+	hex "MDUMP Memory Buffer Message Size"
+	default 0x10000
+	depends on MDUMP
+	help
+	  Set mdump buffer size for mdump module. This size will share with bootloader
+	  Make sure you also changed this value on bootloader config code
+	  There are two stage messages. So mdump buffer's real size is MDUMP_MESSAGE_SIZE * 2
+
+
 config VEXPRESS_SYSCFG
 	bool "Versatile Express System Configuration driver"
 	depends on VEXPRESS_CONFIG
@@ -766,6 +802,61 @@ config PANEL_BOOT_MESSAGE
 	  An empty message will only clear the display at driver init time. Any other
 	  printf()-formatted message is valid with newline and escape codes.
 
+config UID_SYS_STATS
+	bool "Per-UID statistics"
+	depends on PROFILING && TASK_XACCT && TASK_IO_ACCOUNTING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+	  Per UID based io statistics exported to /proc/uid_io
+	  Per UID based procstat control in /proc/uid_procstat
+
+config UID_SYS_STATS_DEBUG
+	bool "Per-TASK statistics"
+	depends on UID_SYS_STATS
+	default n
+	help
+	  Per TASK based io statistics exported to /proc/uid_io
+
+config MEMORY_STATE_TIME
+	tristate "Memory freq/bandwidth time statistics"
+	depends on PROFILING
+	help
+	  Memory time statistics exported to /sys/kernel/memory_state_time
+
+config IDME
+	bool "IDME support"
+	depends on PROC_FS
+	help
+	  Select Y here to enable IDME support to read the data
+	  via userspace (i.e. /proc/idme/* entries)
+
+config GATING
+	bool "GATING support"
+	help
+	  Select Y here to enable MUTE button and GATING circuit support.
+
+config SILENT_OTA
+	tristate "Key to turn on backlight for silent ota"
+	default n
+	depends on INPUT
+	select INPUT_KEYCOMBO
+	---help---
+	  Say Y here if you want to turn on backlight when some keys are pressed;
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called.
+
+config ONETIME_METRIC
+       bool "Enable one time uploading of metrics"
+       default n
+       help
+         This option enables the kernel to upload metrics on bootup just once
+
+config PWM_INVERTED
+       bool "PWM duty cycle and calibration parameter is inverted"
+       help
+         This option should be used if PWM and scaling factor are not directly proportional
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -778,4 +869,5 @@ source "drivers/misc/mic/Kconfig"
 source "drivers/misc/genwqe/Kconfig"
 source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
+source "drivers/misc/mediatek/Kconfig"
 endmenu

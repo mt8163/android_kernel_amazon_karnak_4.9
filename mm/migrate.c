@@ -41,6 +41,7 @@
 #include <linux/page_idle.h>
 #include <linux/page_owner.h>
 #include <linux/ptrace.h>
+#include <linux/delay.h>
 
 #include <asm/tlbflush.h>
 
@@ -164,6 +165,10 @@ void putback_movable_pages(struct list_head *l)
 	struct page *page2;
 
 	list_for_each_entry_safe(page, page2, l, lru) {
+	#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		if (PageCmaAllocating(page))	/* migrate/reclaim failed */
+			ClearPageCmaAllocating(page);
+	#endif
 		if (unlikely(PageHuge(page))) {
 			putback_active_hugepage(page);
 			continue;
@@ -301,6 +306,9 @@ void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 	pte_t pte;
 	swp_entry_t entry;
 	struct page *page;
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	bool need_wait = 0;
+#endif
 
 	spin_lock(ptl);
 	pte = *ptep;
@@ -312,6 +320,17 @@ void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 		goto out;
 
 	page = migration_entry_to_page(entry);
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	/* This page is under cma allocating, do not increase it ref */
+	if (PageCmaAllocating(page)) {
+		pr_debug("%s, Page:%lx, flags:%lx, m:%d, c:%d, map:%p\n",
+			__func__, page_to_pfn(page), page->flags,
+			page_mapcount(page), page_count(page),
+			page->mapping);
+		need_wait = 1;
+		goto out;
+	}
+#endif
 
 	/*
 	 * Once radix-tree replacement of page migration started, page_count
@@ -328,6 +347,10 @@ void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 	return;
 out:
 	pte_unmap_unlock(ptep, ptl);
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	if (need_wait)
+		usleep_range(1000, 1100);
+#endif
 }
 
 void migration_entry_wait(struct mm_struct *mm, pmd_t *pmd,
@@ -1177,6 +1200,10 @@ put_new:
 		else
 			*result = page_to_nid(newpage);
 	}
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	if (reason == MR_CMA && rc == MIGRATEPAGE_SUCCESS)
+		ClearPageCmaAllocating(page);
+#endif
 	return rc;
 }
 
@@ -1374,6 +1401,49 @@ out:
 
 	return rc;
 }
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+/*
+ * migrate_replace_page
+ *
+ * The function takes one single page and a target page (newpage) and
+ * tries to migrate data to the target page. The caller must ensure that
+ * the source page is locked with one additional get_page() call, which
+ * will be freed during the migration. The caller also must release newpage
+ * if migration fails, otherwise the ownership of the newpage is taken.
+ * Source page is released if migration succeeds.
+ *
+ * Return: error code or 0 on success.
+ */
+int migrate_replace_page(struct page *page, struct page *newpage)
+{
+	int ret = -EAGAIN;
+	int pass;
+
+	migrate_prep();
+
+	for (pass = 0; pass < 10 && ret != 0; pass++) {
+		cond_resched();
+
+		if (page_count(page) == 1) {
+			/* page was freed from under us, so we are done */
+			ret = 0;
+			break;
+		}
+		ret = __unmap_and_move(page, newpage, 1, MIGRATE_SYNC);
+	}
+
+	if (ret == 0) {
+		/* take ownership of newpage and add it to lru */
+		put_page(page);
+	} else {
+		/* restore additional reference to the oldpage */
+		//get_page(page);
+	}
+
+	return ret;
+}
+#endif
 
 #ifdef CONFIG_NUMA
 /*

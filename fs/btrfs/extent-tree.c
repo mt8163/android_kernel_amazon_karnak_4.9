@@ -10139,6 +10139,41 @@ btrfs_create_block_group_cache(struct btrfs_root *root, u64 start, u64 size)
 	return cache;
 }
 
+static int check_exist_chunk(struct btrfs_fs_info *fs_info, u64 start, u64 len,
+			     u64 flags)
+{
+	struct btrfs_mapping_tree *map_tree = &fs_info->mapping_tree;
+	struct extent_map *em;
+	int ret;
+
+	read_lock(&map_tree->map_tree.lock);
+	em = lookup_extent_mapping(&map_tree->map_tree, start, len);
+	read_unlock(&map_tree->map_tree.lock);
+
+	if (!em) {
+		btrfs_err_rl(fs_info,
+	"block group start=%llu len=%llu doesn't have corresponding chunk",
+			     start, len);
+		ret = -ENOENT;
+		goto out;
+	}
+	if (em->start != start || em->len != len ||
+	    (em->map_lookup->type & BTRFS_BLOCK_GROUP_TYPE_MASK) !=
+	    (flags & BTRFS_BLOCK_GROUP_TYPE_MASK)) {
+		btrfs_err_rl(fs_info,
+"block group start=%llu len=%llu flags=0x%llx doesn't match with chunk start=%llu len=%llu flags=0x%llx",
+			     start, len , flags & BTRFS_BLOCK_GROUP_TYPE_MASK,
+			     em->start, em->len, em->map_lookup->type &
+			     BTRFS_BLOCK_GROUP_TYPE_MASK);
+		ret = -EUCLEAN;
+		goto out;
+	}
+	ret = 0;
+out:
+	free_extent_map(em);
+	return ret;
+}
+
 int btrfs_read_block_groups(struct btrfs_root *root)
 {
 	struct btrfs_path *path;
@@ -10174,6 +10209,9 @@ int btrfs_read_block_groups(struct btrfs_root *root)
 		need_clear = 1;
 
 	while (1) {
+		struct btrfs_block_group_item bg;
+		int slot;
+
 		ret = find_first_block_group(root, path, &key);
 		if (ret > 0)
 			break;
@@ -10181,7 +10219,20 @@ int btrfs_read_block_groups(struct btrfs_root *root)
 			goto error;
 
 		leaf = path->nodes[0];
-		btrfs_item_key_to_cpu(leaf, &found_key, path->slots[0]);
+		slot = path->slots[0];
+		btrfs_item_key_to_cpu(leaf, &found_key, slot);
+
+		read_extent_buffer(leaf, &bg, btrfs_item_ptr_offset(leaf, slot),
+				   sizeof(bg));
+		/*
+		 * Chunk and block group must have 1:1 mapping.
+		 * So there must be a chunk for this block group.
+		 */
+		ret = check_exist_chunk(info, found_key.objectid,
+					found_key.offset,
+					btrfs_block_group_flags(&bg));
+		if (ret < 0)
+			goto error;
 
 		cache = btrfs_create_block_group_cache(root, found_key.objectid,
 						       found_key.offset);
@@ -10206,7 +10257,7 @@ int btrfs_read_block_groups(struct btrfs_root *root)
 		}
 
 		read_extent_buffer(leaf, &cache->item,
-				   btrfs_item_ptr_offset(leaf, path->slots[0]),
+				   btrfs_item_ptr_offset(leaf, slot),
 				   sizeof(cache->item));
 		cache->flags = btrfs_block_group_flags(&cache->item);
 		if (!mixed &&

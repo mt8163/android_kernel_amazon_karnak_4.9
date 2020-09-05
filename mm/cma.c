@@ -36,6 +36,7 @@
 #include <linux/highmem.h>
 #include <linux/io.h>
 #include <trace/events/cma.h>
+#include <linux/swap.h>
 
 #include "cma.h"
 
@@ -51,6 +52,30 @@ phys_addr_t cma_get_base(const struct cma *cma)
 unsigned long cma_get_size(const struct cma *cma)
 {
 	return cma->count << PAGE_SHIFT;
+}
+
+/* Get all cma range */
+void cma_get_range(phys_addr_t *base, phys_addr_t *size)
+{
+	int i;
+	unsigned long base_pfn = ULONG_MAX, max_pfn = 0;
+
+	for (i = 0; i < cma_area_count; i++) {
+		struct cma *cma = &cma_areas[i];
+
+		if (cma->base_pfn < base_pfn)
+			base_pfn = cma->base_pfn;
+
+		if (cma->base_pfn + cma->count > max_pfn)
+			max_pfn = cma->base_pfn + cma->count;
+	}
+
+	if (max_pfn) {
+		*base = PFN_PHYS(base_pfn);
+		*size = PFN_PHYS(max_pfn) - PFN_PHYS(base_pfn);
+	} else {
+		*base = *size = 0;
+	}
 }
 
 static unsigned long cma_bitmap_aligned_mask(const struct cma *cma,
@@ -138,6 +163,27 @@ err:
 	cma->count = 0;
 	return -EINVAL;
 }
+
+#ifdef CONFIG_ZONE_MOVABLE_CMA
+int cma_alloc_range_ok(struct cma *cma, int count, int align)
+{
+	unsigned long mask, offset;
+	unsigned long bitmap_maxno, bitmap_no, bitmap_count;
+
+	mask = cma_bitmap_aligned_mask(cma, align);
+	offset = cma_bitmap_aligned_offset(cma, align);
+	bitmap_maxno = cma_bitmap_maxno(cma);
+	bitmap_count = cma_bitmap_pages_to_bits(cma, count);
+
+	bitmap_no = bitmap_find_next_zero_area_off(cma->bitmap,
+			bitmap_maxno, 0, bitmap_count, mask,
+			offset);
+
+	if (bitmap_no >= bitmap_maxno)
+		return false;
+	return true;
+}
+#endif
 
 static int __init cma_init_reserved_areas(void)
 {
@@ -459,3 +505,31 @@ bool cma_release(struct cma *cma, const struct page *pages, unsigned int count)
 
 	return true;
 }
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+/**
+ * cma_alloc_large() - Allocate large chunk of memory from the cma zone.
+ * @cma:   Contiguous memory region for which the allocation is performed.
+ * @count: Requested number of pages.
+ * @align: Requested alignment of pages (in PAGE_SIZE order).
+ *
+ * Normal cma_alloc will easily to fail and/or take lots of time when user
+ * trying to allocate large chunk of memory from it. Add helper function
+ * to improve this usage.
+ *
+ * return first page of allocated memory.
+ */
+struct page *cma_alloc_large(struct cma *cma, int count, unsigned int align)
+{
+	struct page *page;
+	int retries = 0;
+
+	for (retries = 0; retries < 10; retries++) {
+		page = cma_alloc(cma, count, align);
+		if (page)
+			return page;
+	}
+
+	return 0;
+}
+#endif

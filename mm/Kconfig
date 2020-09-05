@@ -330,6 +330,7 @@ config MMU_NOTIFIER
 config KSM
 	bool "Enable KSM for page merging"
 	depends on MMU
+	depends on !MTK_ENABLE_AGO
 	help
 	  Enable Kernel Samepage Merging: KSM periodically scans those areas
 	  of an application's address space that an app has advised may be
@@ -517,6 +518,20 @@ config CMA
 	  allocated pages are migrated away to serve the contiguous request.
 
 	  If unsure, say "n".
+
+config ZONE_MOVABLE_CMA
+	bool "Contiguous Memory Allocator by ZONE_MOVABLE"
+	select CMA
+	select CMA_DEBUG
+	depends on HAVE_MEMBLOCK && MMU && MTK_MEM
+	default y
+	help
+	  This enable the support of ZONE MOVALBE Contiguous Memory Allocator.
+	  Traditional CMA is based on a "fallback logic". The system takes
+	  CMA memory only when it runs out of normal memory and makes the
+	  utilization of CMA low. With ZONE_MOVABLE_CMA, we use a movable zone
+	  to manage CMA memory, all movable pages will be allocated from this
+	  zone first and make utilization of CMA memory high.
 
 config CMA_DEBUG
 	bool "CMA debug messages (DEVELOPMENT)"

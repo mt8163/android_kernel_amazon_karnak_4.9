@@ -855,6 +855,11 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 
 isolate_success:
 		list_add(&page->lru, &cc->migratepages);
+	#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		if(zone_idx(page_zone(page)) == OPT_ZONE_MOVABLE_CMA) {
+			SetPageCmaAllocating(page);
+		}
+	#endif
 		cc->nr_migratepages++;
 		nr_isolated++;
 
@@ -1077,6 +1082,11 @@ static void isolate_freepages(struct compact_control *cc)
 		/* If isolation recently failed, do not retry */
 		if (!isolation_suitable(cc, page))
 			continue;
+
+	#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		if(zone_idx(page_zone(page)) == OPT_ZONE_MOVABLE_CMA)
+			continue;
+	#endif
 
 		/* Found a block suitable for isolating free pages from. */
 		isolate_freepages_block(cc, &isolate_start_pfn, block_end_pfn,
@@ -1361,6 +1371,11 @@ static enum compact_result __compaction_suitable(struct zone *zone, int order,
 					unsigned long wmark_target)
 {
 	unsigned long watermark;
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	if(zone_idx(zone) == OPT_ZONE_MOVABLE_CMA)
+		return COMPACT_SKIPPED;
+#endif
 
 	if (is_via_compact_memory(order))
 		return COMPACT_CONTINUE;

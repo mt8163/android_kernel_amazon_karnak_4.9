@@ -433,7 +433,7 @@ config INET_UDP_DIAG
 config INET_DIAG_DESTROY
 	bool "INET: allow privileged process to administratively close sockets"
 	depends on INET_DIAG
-	default n
+	default y
 	---help---
 	  Provides a SOCK_DESTROY operation that allows privileged processes
 	  (e.g., a connection manager or a network administration tool such as

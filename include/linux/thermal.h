@@ -66,6 +66,8 @@
 #define DEFAULT_THERMAL_GOVERNOR       "user_space"
 #elif defined(CONFIG_THERMAL_DEFAULT_GOV_POWER_ALLOCATOR)
 #define DEFAULT_THERMAL_GOVERNOR       "power_allocator"
+#elif defined(CONFIG_THERMAL_DEFAULT_GOV_BACKWARD_COMPATIBLE)
+#define DEFAULT_THERMAL_GOVERNOR       "backward_compatible"
 #endif
 
 struct thermal_zone_device;
@@ -451,8 +453,9 @@ int thermal_zone_unbind_cooling_device(struct thermal_zone_device *, int,
 				       struct thermal_cooling_device *);
 void thermal_zone_device_update(struct thermal_zone_device *,
 				enum thermal_notify_event);
+#ifndef CONFIG_AMAZON_THERMAL
 void thermal_zone_set_trips(struct thermal_zone_device *);
-
+#endif
 struct thermal_cooling_device *thermal_cooling_device_register(char *, void *,
 		const struct thermal_cooling_device_ops *);
 struct thermal_cooling_device *
@@ -504,8 +507,11 @@ static inline int thermal_zone_unbind_cooling_device(
 static inline void thermal_zone_device_update(struct thermal_zone_device *tz,
 					      enum thermal_notify_event event)
 { }
+
+#ifndef CONFIG_AMAZON_THERMAL
 static inline void thermal_zone_set_trips(struct thermal_zone_device *tz)
 { }
+#endif
 static inline struct thermal_cooling_device *
 thermal_cooling_device_register(char *type, void *devdata,
 	const struct thermal_cooling_device_ops *ops)

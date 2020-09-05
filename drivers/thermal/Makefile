@@ -10,11 +10,13 @@ thermal_sys-$(CONFIG_THERMAL_HWMON)		+= thermal_hwmon.o
 thermal_sys-$(CONFIG_THERMAL_OF)		+= of-thermal.o
 
 # governors
+thermal_sys-$(CONFIG_THERMAL_BACKWARD_COMPATIBLE)	+= backward_compatible.o
 thermal_sys-$(CONFIG_THERMAL_GOV_FAIR_SHARE)	+= fair_share.o
 thermal_sys-$(CONFIG_THERMAL_GOV_BANG_BANG)	+= gov_bang_bang.o
 thermal_sys-$(CONFIG_THERMAL_GOV_STEP_WISE)	+= step_wise.o
 thermal_sys-$(CONFIG_THERMAL_GOV_USER_SPACE)	+= user_space.o
 thermal_sys-$(CONFIG_THERMAL_GOV_POWER_ALLOCATOR)	+= power_allocator.o
+thermal_sys-$(CONFIG_THERMAL_GOV_VIRTUAL_SENSOR)        += virtual_sensor_gov.o
 
 # cpufreq cooling
 thermal_sys-$(CONFIG_CPU_THERMAL)	+= cpu_cooling.o
@@ -55,3 +57,13 @@ obj-$(CONFIG_TEGRA_SOCTHERM)	+= tegra/
 obj-$(CONFIG_HISI_THERMAL)     += hisi_thermal.o
 obj-$(CONFIG_MTK_THERMAL)	+= mtk_thermal.o
 obj-$(CONFIG_GENERIC_ADC_THERMAL)	+= thermal-generic-adc.o
+
+obj-$(CONFIG_VIRTUAL_SENSOR_THERMAL)    += virtual_sensor_tablet_thermal.o
+
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/temperature/inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/hwmon/include
+
+obj-$(CONFIG_AMAZON_THERMAL) += amazon_virtual_sensor_thermal.o amazon_cooling.o
+obj-$(CONFIG_AMAZON_THERMAL) += amazon_thermal_life_cycle_reasons.o
+# TODO: Enable suspend/resume
+#obj-$(CONFIG_AMAZON_THERMAL) += amazon_thermal_pm_mt8163_helper.o

@@ -7,6 +7,8 @@ hid-$(CONFIG_DEBUG_FS)		+= hid-debug.o
 obj-$(CONFIG_HID)		+= hid.o
 obj-$(CONFIG_UHID)		+= uhid.o
 
+obj-$(CONFIG_HID_LAB126) += hid-magneto.o
+obj-$(CONFIG_HID_AMAZON_ASPEN)	+= hid-aspen.o
 obj-$(CONFIG_HID_GENERIC)	+= hid-generic.o
 
 hid-$(CONFIG_HIDRAW)		+= hidraw.o

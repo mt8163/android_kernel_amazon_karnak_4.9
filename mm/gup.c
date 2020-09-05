@@ -5,6 +5,9 @@
 
 #include <linux/mm.h>
 #include <linux/memremap.h>
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+#include <linux/migrate.h>
+#endif
 #include <linux/pagemap.h>
 #include <linux/rmap.h>
 #include <linux/swap.h>
@@ -362,7 +365,12 @@ unmap:
  * If it is, *@nonblocking will be set to 0 and -EBUSY returned.
  */
 static int faultin_page(struct task_struct *tsk, struct vm_area_struct *vma,
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		unsigned long address, unsigned int gup_flags,
+		unsigned int *flags, int *nonblocking)
+#else
 		unsigned long address, unsigned int *flags, int *nonblocking)
+#endif
 {
 	unsigned int fault_flags = 0;
 	int ret;
@@ -370,6 +378,12 @@ static int faultin_page(struct task_struct *tsk, struct vm_area_struct *vma,
 	/* mlock all present pages, but do not fault in new pages */
 	if ((*flags & (FOLL_POPULATE | FOLL_MLOCK)) == FOLL_MLOCK)
 		return -ENOENT;
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	if (gup_flags & FOLL_DURABLE)
+		fault_flags = FAULT_FLAG_NO_CMA;
+#endif
+
 	if (*flags & FOLL_WRITE)
 		fault_flags |= FAULT_FLAG_WRITE;
 	if (*flags & FOLL_REMOTE)
@@ -467,6 +481,47 @@ static int check_vma_flags(struct vm_area_struct *vma, unsigned long gup_flags)
 		return -EFAULT;
 	return 0;
 }
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+/**
+ * replace_cma_page() - migrate page out of CMA page blocks
+ * @page:	source page to be migrated
+ *
+ * Returns either the old page (if migration was not possible) or the pointer
+ * to the newly allocated page (with additional reference taken).
+ *
+ * get_user_pages() might take a reference to a page for a long period of time,
+ * what prevent such page from migration. This is fatal to the preffered usage
+ * pattern of CMA pageblocks. This function replaces the given user page with
+ * a new one allocated from NON-MOVABLE pageblock, so locking CMA page can be
+ * avoided.
+ */
+static inline struct page *migrate_replace_cma_page(struct page *page)
+{
+	struct page *newpage = alloc_page(GFP_HIGHUSER);
+
+	if (!newpage)
+		goto out;
+
+	/*
+	 * Take additional reference to the new page to ensure it won't get
+	 * freed after migration procedure end.
+	 */
+	get_page(newpage);
+
+	if (migrate_replace_page(page, newpage) == 0)
+		return newpage;
+
+	put_page(newpage);
+	__free_page(newpage);
+out:
+	/*
+	 * Migration errors in case of get_user_pages() might not
+	 * be fatal to CMA itself, so better don't fail here.
+	 */
+	return page;
+}
+#endif
 
 /**
  * __get_user_pages() - pin user pages in memory
@@ -585,8 +640,13 @@ retry:
 		page = follow_page_mask(vma, start, foll_flags, &page_mask);
 		if (!page) {
 			int ret;
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+			ret = faultin_page(tsk, vma, start, gup_flags,
+					&foll_flags, nonblocking);
+#else
 			ret = faultin_page(tsk, vma, start, &foll_flags,
 					nonblocking);
+#endif
 			switch (ret) {
 			case 0:
 				goto retry;
@@ -609,6 +669,12 @@ retry:
 		} else if (IS_ERR(page)) {
 			return i ? i : PTR_ERR(page);
 		}
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		if ((gup_flags & FOLL_DURABLE) && is_cma_page(page))
+			page = migrate_replace_cma_page(page);
+#endif
+
 		if (pages) {
 			pages[i] = page;
 			flush_anon_page(vma, page, start);
@@ -1048,6 +1114,18 @@ out:
 }
 EXPORT_SYMBOL(get_user_pages_longterm);
 #endif /* CONFIG_FS_DAX */
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+long get_user_pages_durable(unsigned long start, unsigned long nr_pages,
+			unsigned int gup_flags, struct page **pages,
+			struct vm_area_struct **vmas)
+{
+	return __get_user_pages_locked(current, current->mm, start, nr_pages,
+				       pages, vmas, NULL, false,
+				       gup_flags | FOLL_TOUCH | FOLL_DURABLE);
+}
+EXPORT_SYMBOL(get_user_pages_durable);
+#endif
 
 /**
  * populate_vma_page_range() -  populate a range of pages in the vma.

@@ -108,7 +108,11 @@
  * the test for invalid PMBR.  Not __initdata because reloading
  * the partition tables happens after init too.
  */
+#ifdef CONFIG_MMC_AMAZON_BOOT0_PL_BACKUP
+static int force_gpt = 1;
+#else
 static int force_gpt;
+#endif
 static int __init
 force_gpt_fn(char *str)
 {

@@ -39,6 +39,10 @@
 #include <net/genetlink.h>
 #include <linux/suspend.h>
 
+#ifdef CONFIG_AMAZON_THERMAL
+#include <linux/delay.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/thermal.h>
 
@@ -61,6 +65,13 @@ static DEFINE_MUTEX(thermal_list_lock);
 static DEFINE_MUTEX(thermal_governor_lock);
 
 static atomic_t in_suspend;
+#ifdef CONFIG_AMAZON_THERMAL
+static unsigned int poweroff_delay_ms;
+
+static void remove_trip_attrs(struct thermal_zone_device *tz);
+static int create_trip_attrs(struct thermal_zone_device *tz, int mask);
+#endif
+
 
 static struct thermal_governor *def_governor;
 
@@ -392,18 +403,57 @@ exit:
 	mutex_unlock(&thermal_list_lock);
 }
 
+#ifdef CONFIG_AMAZON_THERMAL
+/*
+ * Unbinds all found thermal instances for a thermal zone irrespective of
+ * matching them through tz
+ */
+static void unbind_all_tz(struct thermal_zone_device *tz)
+{
+	struct thermal_cooling_device *cdev = NULL;
+	struct thermal_instance *instance = NULL;
+	struct thermal_instance *next_instance = NULL;
+	/* Go through all cooling devices */
+	list_for_each_entry(cdev, &thermal_cdev_list, node) {
+		/* And all thermal instances under that cooling device */
+		list_for_each_entry_safe(instance, next_instance,
+				&cdev->thermal_instances, cdev_node) {
+			/* Only wipe if for the intended thermal zone */
+			if (instance->tz == tz)
+				thermal_zone_unbind_cooling_device(tz,
+						instance->trip, cdev);
+		}
+	}
+}
+#endif
+
 static void thermal_zone_device_set_polling(struct thermal_zone_device *tz,
 					    int delay)
 {
 	if (delay > 1000)
-		mod_delayed_work(system_freezable_wq, &tz->poll_queue,
-				 round_jiffies(msecs_to_jiffies(delay)));
+		mod_delayed_work(system_freezable_power_efficient_wq,
+					&tz->poll_queue,
+					round_jiffies(msecs_to_jiffies(delay)));
 	else if (delay)
-		mod_delayed_work(system_freezable_wq, &tz->poll_queue,
-				 msecs_to_jiffies(delay));
+		mod_delayed_work(system_freezable_power_efficient_wq,
+					&tz->poll_queue,
+					msecs_to_jiffies(delay));
 	else
 		cancel_delayed_work(&tz->poll_queue);
 }
+
+#ifdef CONFIG_AMAZON_THERMAL
+static bool is_thermal_device_disabled(struct thermal_zone_device *tz)
+{
+	enum thermal_device_mode mode = THERMAL_DEVICE_DISABLED;
+	int result;
+
+	result = tz->ops->get_mode(tz, &mode);
+	if (result)
+		return true;
+	return (mode == THERMAL_DEVICE_DISABLED) ? true : false;
+}
+#endif
 
 static void monitor_thermal_zone(struct thermal_zone_device *tz)
 {
@@ -443,10 +493,44 @@ static void handle_critical_trips(struct thermal_zone_device *tz,
 		tz->ops->notify(tz, trip, trip_type);
 
 	if (trip_type == THERMAL_TRIP_CRITICAL) {
+#ifdef CONFIG_AMAZON_THERMAL
+		int ret;
+		unsigned long state;
+		struct thermal_cooling_device *cdev;
+
+		char data[2][28];
+		char *envp[] = { data[0], data[1], NULL};
+
+		snprintf(data[0], sizeof(data[0]), "TRIP=%d", trip);
+		snprintf(data[1], sizeof(data[1]), "THERMAL_STATE=%d", trip+1);
+
+		dev_emerg(&tz->device,
+			  "critical temperature reached(%d C),shutting down\n",
+			  tz->temperature / 1000);
+		/* Dump all cdev's current level */
+		list_for_each_entry(cdev, &thermal_cdev_list, node) {
+			ret = cdev->ops->get_cur_state(cdev, &state);
+			if (!ret)
+				dev_emerg(&cdev->device, "%s cu_level %ld\n",
+						cdev->type, state);
+			else
+				dev_emerg(&cdev->device,
+						"%s get_cur_state err %d\n",
+						cdev->type, ret);
+		}
+		kobject_uevent_env(&tz->device.kobj, KOBJ_CHANGE, envp);
+		/*
+		 * Sleep here to allow uevent handler to shutdown
+		 * If Uevent handler doesnt shutdown, wake up and shutdown
+		 */
+		msleep(poweroff_delay_ms);
+		orderly_reboot();
+#else
 		dev_emerg(&tz->device,
 			  "critical temperature reached(%d C),shutting down\n",
 			  tz->temperature / 1000);
 		orderly_poweroff(true);
+#endif
 	}
 }
 
@@ -513,13 +597,14 @@ int thermal_zone_get_temp(struct thermal_zone_device *tz, int *temp)
 		if (!ret && *temp < crit_temp)
 			*temp = tz->emul_temperature;
 	}
- 
+
 	mutex_unlock(&tz->lock);
 exit:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(thermal_zone_get_temp);
 
+#ifndef CONFIG_AMAZON_THERMAL
 void thermal_zone_set_trips(struct thermal_zone_device *tz)
 {
 	int low = -INT_MAX;
@@ -569,6 +654,7 @@ exit:
 	mutex_unlock(&tz->lock);
 }
 EXPORT_SYMBOL_GPL(thermal_zone_set_trips);
+#endif
 
 static void update_temperature(struct thermal_zone_device *tz)
 {
@@ -584,6 +670,12 @@ static void update_temperature(struct thermal_zone_device *tz)
 	}
 
 	mutex_lock(&tz->lock);
+#ifdef CONFIG_AMAZON_THERMAL
+	if (is_thermal_device_disabled(tz)) {
+		mutex_unlock(&tz->lock);
+	return;
+	}
+#endif
 	tz->last_temperature = tz->temperature;
 	tz->temperature = temp;
 	mutex_unlock(&tz->lock);
@@ -620,7 +712,9 @@ void thermal_zone_device_update(struct thermal_zone_device *tz,
 
 	update_temperature(tz);
 
+#ifndef CONFIG_AMAZON_THERMAL
 	thermal_zone_set_trips(tz);
+#endif
 
 	tz->notify_event = event;
 
@@ -641,6 +735,41 @@ static void thermal_zone_device_check(struct work_struct *work)
 
 #define to_thermal_zone(_dev) \
 	container_of(_dev, struct thermal_zone_device, device)
+
+#ifdef CONFIG_AMAZON_THERMAL
+static ssize_t
+trips_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+
+	return sprintf(buf, "%d\n", tz->trips);
+}
+
+static ssize_t
+trips_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+	int ntrip, mask;
+
+	if (kstrtouint(buf, 10, &ntrip))
+		return -EINVAL;
+	if (ntrip > THERMAL_MAX_TRIPS)
+		return -EINVAL;
+	if (ntrip > sizeof(mask) * BITS_PER_BYTE)
+		return -EINVAL;
+	mutex_lock(&tz->lock);
+	remove_trip_attrs(tz);
+	mutex_unlock(&tz->lock);
+	unbind_all_tz(tz);
+	mutex_lock(&tz->lock);
+	mask = (1 << ntrip) - 1;
+	of_thermal_set_ntrips(tz, ntrip);
+	create_trip_attrs(tz, mask);
+	mutex_unlock(&tz->lock);
+	return count;
+}
+#endif
 
 static ssize_t
 type_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -809,9 +938,10 @@ trip_point_hyst_store(struct device *dev, struct device_attribute *attr,
 	 */
 	ret = tz->ops->set_trip_hyst(tz, trip, temperature);
 
+#ifndef CONFIG_AMAZON_THERMAL
 	if (!ret)
 		thermal_zone_set_trips(tz);
-
+#endif
 	return ret ? ret : count;
 }
 
@@ -1159,6 +1289,41 @@ int power_actor_set_power(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+#ifdef CONFIG_AMAZON_THERMAL
+static ssize_t polling_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+
+	if (!tz)
+		return -EINVAL;
+
+	return sprintf(buf, "%d\n", tz->polling_delay);
+}
+
+static ssize_t polling_store(struct device *dev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	int polling_delay = 0;
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+
+	if (!tz || (polling_delay < 0))
+		return -EINVAL;
+	if (sscanf(buf, "%d\n", &polling_delay) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tz->lock);
+	tz->polling_delay = polling_delay;
+	mutex_unlock(&tz->lock);
+
+	monitor_thermal_zone(tz);
+	return count;
+}
+
+static DEVICE_ATTR(polling, S_IRUGO | S_IWUSR, polling_show, polling_store);
+static DEVICE_ATTR(trips, 0644, trips_show,   trips_store);
+#endif
+
 static DEVICE_ATTR(type, 0444, type_show, NULL);
 static DEVICE_ATTR(temp, 0444, temp_show, NULL);
 static DEVICE_ATTR(mode, 0644, mode_show, mode_store);
@@ -1228,6 +1393,155 @@ thermal_cooling_device_cur_state_store(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_AMAZON_THERMAL
+static ssize_t
+thermal_cooling_device_levels_show(struct device *dev,
+                        struct device_attribute *attr, char *buf)
+{
+        struct thermal_cooling_device *cdev =
+                container_of(dev, struct thermal_cooling_device, device);
+        struct thermal_instance *instance;
+        int offset = 0;
+
+        mutex_lock(&cdev->lock);
+        list_for_each_entry(instance, &cdev->thermal_instances, cdev_node) {
+                offset += sprintf(buf + offset,
+                                "name=%s type/id=%s/%d trip=%d upper=%ld lower=%ld\n",
+                                instance->name,
+                                instance->tz->type,
+                                instance->tz->id,
+                                instance->trip,
+                                instance->upper,
+                                instance->lower);
+        }
+        mutex_unlock(&cdev->lock);
+        return offset;
+}
+
+static ssize_t
+poweroff_delay_ms_show(struct class *cls,
+				struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", poweroff_delay_ms);
+}
+
+static ssize_t
+poweroff_delay_ms_store(struct class *cls,
+				struct class_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned int delay_ms;
+
+	if (kstrtouint(buf, 10, &delay_ms))
+		return -EINVAL;
+	poweroff_delay_ms = delay_ms;
+	return count;
+}
+
+/* Returns 0 for success, -1 for failure. */
+static int
+create_thermal_instance(struct thermal_cooling_device *cdev,
+			struct thermal_instance *prev_instance,
+			int thermal_zone_number, int trip, int state)
+{
+	struct thermal_zone_device *tz = NULL;
+	/* Assume a lower action of 0 */
+	int lower = 0;
+
+	list_for_each_entry(tz, &thermal_tz_list, node) {
+		if (tz->id != thermal_zone_number)
+			continue;
+
+		/* Was a prior trip found for this thermal instance */
+		if (prev_instance) {
+			lower = prev_instance->upper;
+			if (lower > state) {
+				pr_info("Note, reduced upper commanded value from %d to %d\n", state, lower);
+				state = lower;
+			}
+		}
+		pr_info("Creating new thermal_instance tz=%d/%s trip=%d with lower=%d upper=%d\n",
+			thermal_zone_number, tz->type, trip, lower, state);
+		if (thermal_zone_bind_cooling_device(tz, trip, cdev, state,
+					lower, THERMAL_WEIGHT_DEFAULT)) {
+			pr_err("Error: %s thermal_zone_bind_cooling_device\n",
+					__func__);
+			return -1;
+		}
+		return 0;
+	}
+	return -1;
+}
+
+static ssize_t
+thermal_cooling_device_levels_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct thermal_cooling_device *cdev =
+		container_of(dev, struct thermal_cooling_device, device);
+	struct thermal_instance *instance;
+	struct thermal_instance *prev_instance = NULL;
+	unsigned int trip, prev_trip, state;
+	unsigned long max_state;
+	int thermal_zone_number = -1;
+	int number_updated = 0;
+
+	if (!cdev)
+		return -EINVAL;
+	if (sscanf(buf, "%d %d %d\n", &trip, &state, &thermal_zone_number) < 2)
+		return -EINVAL;
+	if (trip >= THERMAL_MAX_TRIPS)
+		return -EINVAL;
+
+	if (cdev->ops->get_max_state(cdev, &max_state))
+	return -EINVAL;
+	if ((state < 0) || (state > max_state))
+		return -EINVAL;
+
+	prev_trip = trip ? trip-1 : trip;
+	mutex_lock(&cdev->lock);
+
+	/* Assumes that lower trips are earlier on the list */
+	list_for_each_entry(instance, &cdev->thermal_instances, cdev_node) {
+		/* Updating trip for specific thermal zone mentioned */
+		if (thermal_zone_number != -1 &&
+			instance->tz->id != thermal_zone_number) {
+			continue;
+		}
+		if (instance->trip == prev_trip)
+			prev_instance = instance;
+		if (instance->trip != trip)
+			continue;
+		number_updated++;
+		instance->upper = state;
+		if ((trip == 0) || !prev_instance)
+			instance->lower = 0;
+		else {
+			instance->lower = instance->upper ?
+				prev_instance->upper : instance->upper;
+			if (instance->lower > instance->upper)
+				instance->lower = instance->upper;
+		}
+		/* Found a matching trip-tz pair */
+		break;
+	}
+	mutex_unlock(&cdev->lock);
+	/* If no existing thermal instance was found */
+	if (!number_updated) {
+		if (create_thermal_instance(cdev, prev_instance,
+					thermal_zone_number, trip, state)) {
+			pr_err("%s failed to create new thermal_instance\n",
+					__func__);
+		}
+	}
+	return count;
+}
+
+static DEVICE_ATTR(levels, 0644,
+		   thermal_cooling_device_levels_show,
+		   thermal_cooling_device_levels_store);
+#endif
+
 static struct device_attribute dev_attr_cdev_type =
 __ATTR(type, 0444, thermal_cooling_device_type_show, NULL);
 static DEVICE_ATTR(max_state, 0444,
@@ -1255,6 +1569,9 @@ static struct attribute *cooling_device_attrs[] = {
 	&dev_attr_cdev_type.attr,
 	&dev_attr_max_state.attr,
 	&dev_attr_cur_state.attr,
+#ifdef CONFIG_AMAZON_THERMAL
+	&dev_attr_levels.attr,
+#endif
 	NULL,
 };
 
@@ -1492,9 +1809,21 @@ static void thermal_release(struct device *dev)
 	}
 }
 
+#ifdef CONFIG_AMAZON_THERMAL
+static struct class_attribute thermal_class_attrs[] = {
+	__ATTR(poweroff_delay_ms, S_IWUSR | S_IRUGO,
+		poweroff_delay_ms_show,
+		poweroff_delay_ms_store),
+	__ATTR_NULL,
+};
+#endif
+
 static struct class thermal_class = {
 	.name = "thermal",
 	.dev_release = thermal_release,
+#ifdef CONFIG_AMAZON_THERMAL
+	.class_attrs = thermal_class_attrs,
+#endif
 };
 
 /**
@@ -1814,6 +2143,10 @@ static int create_trip_attrs(struct thermal_zone_device *tz, int mask)
 		device_create_file(&tz->device,
 				   &tz->trip_hyst_attrs[indx].attr);
 	}
+
+#ifdef CONFIG_AMAZON_THERMAL
+	kobject_uevent(&tz->device.kobj, KOBJ_CHANGE);
+#endif
 	return 0;
 }
 
@@ -1917,6 +2250,12 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 		return ERR_PTR(result);
 	}
 
+#ifdef CONFIG_AMAZON_THERMAL
+	result = device_create_file(&tz->device, &dev_attr_type);
+	result |= device_create_file(&tz->device, &dev_attr_polling);
+	result |= device_create_file(&tz->device, &dev_attr_temp);
+	result |= device_create_file(&tz->device, &dev_attr_trips);
+#else
 	/* sys I/F */
 	if (type) {
 		result = device_create_file(&tz->device, &dev_attr_type);
@@ -1925,6 +2264,7 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 	}
 
 	result = device_create_file(&tz->device, &dev_attr_temp);
+#endif
 	if (result)
 		goto unregister;
 
@@ -1999,14 +2339,14 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 			goto unregister;
 	}
 
+	INIT_DELAYED_WORK(&(tz->poll_queue), thermal_zone_device_check);
+
 	mutex_lock(&thermal_list_lock);
 	list_add_tail(&tz->node, &thermal_tz_list);
 	mutex_unlock(&thermal_list_lock);
 
 	/* Bind cooling devices for this zone */
 	bind_tz(tz);
-
-	INIT_DELAYED_WORK(&(tz->poll_queue), thermal_zone_device_check);
 
 	thermal_zone_device_reset(tz);
 	/* Update the new thermal zone and mark it as already updated. */
@@ -2039,6 +2379,12 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 	tzp = tz->tzp;
 
 	mutex_lock(&thermal_list_lock);
+
+	tz->polling_delay = 0;
+
+	/* force stop pending/running delayed work*/
+	cancel_delayed_work_sync(&(tz->poll_queue));
+
 	list_for_each_entry(pos, &thermal_tz_list, node)
 	    if (pos == tz)
 		break;
@@ -2069,7 +2415,7 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 
 	mutex_unlock(&thermal_list_lock);
 
-	thermal_zone_device_set_polling(tz, 0);
+	/* thermal_zone_device_set_polling(tz, 0); */
 
 	if (tz->type[0])
 		device_remove_file(&tz->device, &dev_attr_type);
@@ -2296,11 +2642,13 @@ static int thermal_pm_notify(struct notifier_block *nb,
 	case PM_POST_RESTORE:
 	case PM_POST_SUSPEND:
 		atomic_set(&in_suspend, 0);
+		mutex_lock(&thermal_list_lock);
 		list_for_each_entry(tz, &thermal_tz_list, node) {
 			thermal_zone_device_reset(tz);
 			thermal_zone_device_update(tz,
 						   THERMAL_EVENT_UNSPECIFIED);
 		}
+		mutex_unlock(&thermal_list_lock);
 		break;
 	default:
 		break;
@@ -2336,6 +2684,13 @@ static int __init thermal_init(void)
 	if (result)
 		pr_warn("Thermal: Can not register suspend notifier, return %d\n",
 			result);
+
+#ifdef CONFIG_AMAZON_THERMAL
+	/*
+	 * Power off delay for critical uevent handler to complete.
+	 */
+	poweroff_delay_ms = THERMAL_DEFAULT_POWEROFF_DELAY_MS;
+#endif
 
 	return 0;
 

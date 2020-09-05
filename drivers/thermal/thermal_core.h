@@ -30,6 +30,10 @@
 /* Initial state of a cooling device during binding */
 #define THERMAL_NO_TARGET -1UL
 
+#ifdef CONFIG_AMAZON_THERMAL
+/* 10 seconds default power off delay */
+#define THERMAL_DEFAULT_POWEROFF_DELAY_MS (10000)
+#endif
 /*
  * This structure is used to describe the behavior of
  * a certain cooling device on a certain trip point
@@ -102,6 +106,9 @@ static inline void thermal_gov_power_allocator_unregister(void) {}
 int of_parse_thermal_zones(void);
 void of_thermal_destroy_zones(void);
 int of_thermal_get_ntrips(struct thermal_zone_device *);
+#ifdef CONFIG_AMAZON_THERMAL
+void of_thermal_set_ntrips(struct thermal_zone_device *, unsigned int trips);
+#endif
 bool of_thermal_is_trip_valid(struct thermal_zone_device *, int);
 const struct thermal_trip *
 of_thermal_get_trip_points(struct thermal_zone_device *);
@@ -112,6 +119,13 @@ static inline int of_thermal_get_ntrips(struct thermal_zone_device *tz)
 {
 	return 0;
 }
+#ifdef CONFIG_AMAZON_THERMAL
+static inline void of_thermal_set_ntrips(struct thermal_zone_device *,
+		unsigned int trips);
+{
+
+}
+#endif
 static inline bool of_thermal_is_trip_valid(struct thermal_zone_device *tz,
 					    int trip)
 {

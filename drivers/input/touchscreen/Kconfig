@@ -9,11 +9,44 @@ menuconfig INPUT_TOUCHSCREEN
 
 	  If unsure, say Y.
 
+source "drivers/input/touchscreen/mediatek/Kconfig"
+
 if INPUT_TOUCHSCREEN
 
 config TOUCHSCREEN_PROPERTIES
 	def_tristate INPUT
 	depends on INPUT
+
+config TOUCHSCREEN_GTP9XX
+	tristate "Goodix GTP 9xx touchscreens"
+	depends on I2C
+	default no
+	help
+	  Say Y here if you have a touchscreen using the GTP9xx
+	  touchscreen from Goodix.
+
+	  If unsure, say N.
+	  To compile this driver as a module, choose M here: the
+	  module will be called GTP9XX.
+
+config GTP9XX_SLEEP_MODE
+	bool "Goodix GTP 9xx sleep mode"
+	depends on TOUCHSCREEN_GTP9XX
+	default n
+	help
+	 Say Y if the driver need to support sleep mode.
+
+	 If unsure, say N.
+
+config TOUCHSCREEN_GT967
+	tristate "Goodix GTP 967 touchscreen"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have a touchscreen using the GTP967
+	  touchscreen from Goodix.
+
+	  If unsure, say N.
 
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"

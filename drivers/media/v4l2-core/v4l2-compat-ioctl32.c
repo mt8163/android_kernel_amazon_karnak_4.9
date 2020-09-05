@@ -138,7 +138,6 @@ struct v4l2_format32 {
 		struct v4l2_window32	win;
 		struct v4l2_vbi_format	vbi;
 		struct v4l2_sliced_vbi_format	sliced;
-		struct v4l2_sdr_format	sdr;
 		__u8	raw_data[200];        /* user-defined */
 	} fmt;
 };
@@ -318,7 +317,7 @@ static int put_v4l2_create32(struct v4l2_create_buffers __user *kp,
 
 struct v4l2_standard32 {
 	__u32		     index;
-	compat_u64	     id;
+	__u32		     id[2]; /* __u64 would get the alignment wrong */
 	__u8		     name[24];
 	struct v4l2_fract    frameperiod; /* Frames, not fields */
 	__u32		     framelines;
@@ -506,6 +505,7 @@ static int get_v4l2_buffer32(struct v4l2_buffer __user *kp,
 		    assign_in_user(&kp->timestamp.tv_usec,
 				   &up->timestamp.tv_usec))
 			return -EFAULT;
+	}
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
 		u32 num_planes = length;
@@ -697,7 +697,7 @@ struct v4l2_input32 {
 	__u32	     type;		/*  Type of input */
 	__u32	     audioset;		/*  Associated audios (bitfield) */
 	__u32        tuner;             /*  Associated tuner */
-	compat_u64   std;
+	v4l2_std_id  std;
 	__u32	     status;
 	__u32	     capabilities;
 	__u32	     reserved[3];
@@ -724,11 +724,11 @@ static inline int put_v4l2_input32(struct v4l2_input __user *kp,
 }
 
 struct v4l2_ext_controls32 {
-	__u32 which;
-	__u32 count;
-	__u32 error_idx;
-	__u32 reserved[2];
-	compat_caddr_t controls; /* actually struct v4l2_ext_control32 * */
+       __u32 ctrl_class;
+       __u32 count;
+       __u32 error_idx;
+       __u32 reserved[2];
+       compat_caddr_t controls; /* actually struct v4l2_ext_control32 * */
 };
 
 struct v4l2_ext_control32 {
@@ -903,7 +903,6 @@ static int put_v4l2_ext_controls32(struct file *file,
 struct v4l2_event32 {
 	__u32				type;
 	union {
-		compat_s64		value64;
 		__u8			data[64];
 	} u;
 	__u32				pending;
@@ -1260,8 +1259,8 @@ long v4l2_compat_ioctl32(struct file *file, unsigned int cmd, unsigned long arg)
 		ret = vdev->fops->compat_ioctl32(file, cmd, arg);
 
 	if (ret == -ENOIOCTLCMD)
-		pr_debug("compat_ioctl32: unknown ioctl '%c', dir=%d, #%d (0x%08x)\n",
-			 _IOC_TYPE(cmd), _IOC_DIR(cmd), _IOC_NR(cmd), cmd);
+		pr_warn("compat_ioctl32: unknown ioctl '%c', dir=%d, #%d (0x%08x)\n",
+			_IOC_TYPE(cmd), _IOC_DIR(cmd), _IOC_NR(cmd), cmd);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(v4l2_compat_ioctl32);

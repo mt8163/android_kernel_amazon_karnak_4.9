@@ -37,6 +37,11 @@ void unregister_undef_hook(struct undef_hook *hook);
 
 void arm64_notify_segfault(struct pt_regs *regs, unsigned long addr);
 
+#ifdef CONFIG_MEDIATEK_SOLUTION
+int register_async_abort_handler(void (*fn)(struct pt_regs *regs, void *),
+				 void *priv);
+#endif
+
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 static inline int __in_irqentry_text(unsigned long ptr)
 {
@@ -60,4 +65,5 @@ static inline int in_exception_text(unsigned long ptr)
 	return in ? : __in_irqentry_text(ptr);
 }
 
+void dump_instr(const char *lvl, struct pt_regs *regs);
 #endif

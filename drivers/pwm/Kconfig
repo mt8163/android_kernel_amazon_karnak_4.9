@@ -262,6 +262,16 @@ config PWM_LPSS_PLATFORM
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-lpss-platform.
 
+config PWM_MEDIATEK
+        tristate "MediaTek PWM support"
+        depends on ARCH_MEDIATEK || COMPILE_TEST
+        help
+          Generic PWM framework driver for Mediatek ARM SoC.
+          The PWM is used to control the LED light for status
+
+          To compile this driver as a module, choose M here: the module
+          will be called pwm-mediatek.
+
 config PWM_MESON
 	tristate "Amlogic Meson PWM driver"
 	depends on ARCH_MESON
@@ -470,5 +480,13 @@ config PWM_VT8500
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-vt8500.
+
+config PWM_MUTEBUTTON
+        bool "LED Support for mute LED driver calibration"
+        depends on PWM
+	default n
+        help
+          Add calibration to generic PWM framework driver for Mediatek ARM SoC.
+          The PWM is used to control the Mute LED Button light for status
 
 endif

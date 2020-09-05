@@ -68,7 +68,7 @@ static struct generic_pm_domain *genpd_lookup_dev(struct device *dev)
  * This should only be used where we are certain that the pm_domain
  * attached to the device is a genpd domain.
  */
-static struct generic_pm_domain *dev_to_genpd(struct device *dev)
+struct generic_pm_domain *dev_to_genpd(struct device *dev)
 {
 	if (IS_ERR_OR_NULL(dev->pm_domain))
 		return ERR_PTR(-EINVAL);

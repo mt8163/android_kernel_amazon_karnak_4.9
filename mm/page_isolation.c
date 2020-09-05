@@ -247,6 +247,21 @@ __test_page_isolated_in_pageblock(unsigned long pfn, unsigned long end_pfn,
 	return pfn;
 }
 
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+static inline struct page *
+check_page_valid(unsigned long pfn, unsigned long nr_pages)
+{
+	int i;
+
+	for (i = 0; i < nr_pages; i++)
+		if (pfn_valid_within(pfn + i))
+			break;
+	if (unlikely(i == nr_pages))
+		return NULL;
+	return pfn_to_page(pfn + i);
+}
+#endif
+
 /* Caller should ensure that requested range is in a single zone */
 int test_pages_isolated(unsigned long start_pfn, unsigned long end_pfn,
 			bool skip_hwpoisoned_pages)
@@ -261,11 +276,19 @@ int test_pages_isolated(unsigned long start_pfn, unsigned long end_pfn,
 	 * Then we just check migratetype first.
 	 */
 	for (pfn = start_pfn; pfn < end_pfn; pfn += pageblock_nr_pages) {
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		page = check_page_valid(pfn, pageblock_nr_pages);
+#else
 		page = __first_valid_page(pfn, pageblock_nr_pages);
+#endif
 		if (page && get_pageblock_migratetype(page) != MIGRATE_ISOLATE)
 			break;
 	}
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	page = check_page_valid(start_pfn, end_pfn - start_pfn);
+#else
 	page = __first_valid_page(start_pfn, end_pfn - start_pfn);
+#endif
 	if ((pfn < end_pfn) || !page)
 		return -EBUSY;
 	/* Check all pages are free or marked as ISOLATED */
@@ -276,6 +299,12 @@ int test_pages_isolated(unsigned long start_pfn, unsigned long end_pfn,
 	spin_unlock_irqrestore(&zone->lock, flags);
 
 	trace_test_pages_isolated(start_pfn, end_pfn, pfn);
+
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	/* page may in kswap ? */
+	if (pfn < end_pfn && zone->zone_pgdat)
+		wake_up_interruptible(&zone->zone_pgdat->kswapd_wait);
+#endif
 
 	return pfn < end_pfn ? -EBUSY : 0;
 }

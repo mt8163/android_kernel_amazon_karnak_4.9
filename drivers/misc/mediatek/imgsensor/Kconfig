@@ -1,0 +1,13 @@
+config CAMERA_MULTIMODAL
+       bool "CONFIG_CAMERA_MULTIMODAL"
+       default n
+       help
+          CONFIG_CAMERA_MULTIMODAL
+
+config MTK_IMGSENSOR
+	bool CONFIG_MTK_IMGSENSOR
+	default n
+	help
+	  CONFIG_MTK_IMGSENSOR
+
+source "drivers/misc/mediatek/imgsensor/src/Kconfig"

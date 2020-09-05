@@ -68,6 +68,8 @@
 
 #include <asm/futex.h>
 
+#include <mt-plat/fpsgo_common.h>
+
 #include "locking/rtmutex_common.h"
 
 /*
@@ -1749,6 +1751,8 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
 	struct futex_hash_bucket *hb1, *hb2;
 	struct futex_q *this, *next;
 	WAKE_Q(wake_q);
+	if (nr_wake < 0 || nr_requeue < 0)
+		return -EINVAL;
 
 	if (nr_wake < 0 || nr_requeue < 0)
 		return -EINVAL;
@@ -2464,6 +2468,7 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 		hrtimer_init_sleeper(to, current);
 		hrtimer_set_expires_range_ns(&to->timer, *abs_time,
 					     current->timer_slack_ns);
+		xgf_igather_timer(&to->timer, 1);
 	}
 
 retry:
@@ -2510,6 +2515,7 @@ retry:
 
 out:
 	if (to) {
+		xgf_igather_timer(&to->timer, to->task ? -1 : 0);
 		hrtimer_cancel(&to->timer);
 		destroy_hrtimer_on_stack(&to->timer);
 	}

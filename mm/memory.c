@@ -84,6 +84,11 @@
 unsigned long max_mapnr;
 struct page *mem_map;
 
+#ifdef CONFIG_MTK_MEMCFG
+unsigned long mem_map_size;
+EXPORT_SYMBOL(mem_map_size);
+#endif
+
 EXPORT_SYMBOL(max_mapnr);
 EXPORT_SYMBOL(mem_map);
 #endif
@@ -1120,6 +1125,11 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 	swp_entry_t entry;
 	struct page *pending_page = NULL;
 
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	int old_nice = task_nice(current);
+	struct page* cma_page[1] = {NULL, };
+#endif
+
 again:
 	init_rss_vec(rss);
 	start_pte = pte_offset_map_lock(mm, pmd, addr, &ptl);
@@ -1168,15 +1178,32 @@ again:
 					mark_page_accessed(page);
 			}
 			rss[mm_counter(page)]--;
+		#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+			if(zone_idx(page_zone(page)) == OPT_ZONE_MOVABLE_CMA) {
+				set_user_nice(current, -20);
+			}
+		#endif
 			page_remove_rmap(page, false);
 			if (unlikely(page_mapcount(page) < 0))
 				print_bad_pte(vma, addr, ptent, page);
+		#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+			if(zone_idx(page_zone(page)) == OPT_ZONE_MOVABLE_CMA) {
+				cma_page[0] = page;
+
+				free_pages_and_swap_cache(cma_page, 1);
+				cma_page[0] = NULL;
+				if(task_nice(current) != old_nice)
+					set_user_nice(current, old_nice);
+				continue;
+			}
+		#endif
 			if (unlikely(__tlb_remove_page(tlb, page))) {
 				force_flush = 1;
 				pending_page = page;
 				addr += PAGE_SIZE;
 				break;
 			}
+
 			continue;
 		}
 		/* only check swap_entries if explicitly asked for in details */
@@ -2141,7 +2168,11 @@ static inline int wp_page_reuse(struct fault_env *fe, pte_t orig_pte,
  * - In any case, unlock the PTL and drop the reference we took to the old page.
  */
 static int wp_page_copy(struct fault_env *fe, pte_t orig_pte,
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		struct page *old_page, gfp_t gfp)
+#else
 		struct page *old_page)
+#endif
 {
 	struct vm_area_struct *vma = fe->vma;
 	struct mm_struct *mm = vma->vm_mm;
@@ -2156,12 +2187,20 @@ static int wp_page_copy(struct fault_env *fe, pte_t orig_pte,
 		goto oom;
 
 	if (is_zero_pfn(pte_pfn(orig_pte))) {
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		new_page = alloc_zeroed_user_highpage(gfp, vma, fe->address);
+#else
 		new_page = alloc_zeroed_user_highpage_movable(vma, fe->address);
+#endif
 		if (!new_page)
 			goto oom;
 	} else {
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		new_page = alloc_page_vma(gfp, vma, fe->address);
+#else
 		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma,
 				fe->address);
+#endif
 		if (!new_page)
 			goto oom;
 		cow_user_page(new_page, old_page, fe->address, vma);
@@ -2366,6 +2405,12 @@ static int do_wp_page(struct fault_env *fe, pte_t orig_pte)
 {
 	struct vm_area_struct *vma = fe->vma;
 	struct page *old_page;
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	gfp_t gfp = GFP_HIGHUSER_MOVABLE;
+
+	if (IS_ENABLED(CONFIG_CMA) && (fe->flags & FAULT_FLAG_NO_CMA))
+		gfp &= ~(__GFP_MOVABLE | __GFP_CMA);
+#endif
 
 	old_page = vm_normal_page(vma, fe->address, orig_pte);
 	if (!old_page) {
@@ -2381,7 +2426,11 @@ static int do_wp_page(struct fault_env *fe, pte_t orig_pte)
 			return wp_pfn_shared(fe, orig_pte);
 
 		pte_unmap_unlock(fe->pte, fe->ptl);
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+		return wp_page_copy(fe, orig_pte, old_page, gfp);
+#else
 		return wp_page_copy(fe, orig_pte, old_page);
+#endif
 	}
 
 	/*
@@ -2430,7 +2479,11 @@ static int do_wp_page(struct fault_env *fe, pte_t orig_pte)
 	get_page(old_page);
 
 	pte_unmap_unlock(fe->pte, fe->ptl);
+#ifdef CONFIG_MTEE_CMA_SECURE_MEMORY
+	return wp_page_copy(fe, orig_pte, old_page, gfp);
+#else
 	return wp_page_copy(fe, orig_pte, old_page);
+#endif
 }
 
 static void unmap_mapping_range_vma(struct vm_area_struct *vma,

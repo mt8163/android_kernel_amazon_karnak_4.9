@@ -60,6 +60,16 @@ choice
 	  This option sets which thermal governor shall be loaded at
 	  startup. If in doubt, select 'step_wise'.
 
+config THERMAL_DEFAULT_GOV_BACKWARD_COMPATIBLE
+	bool "backward_compatible"
+	select THERMAL_BACKWARD_COMPATIBLE
+	help
+	  Use the backward_compatible governor as default. This throttles the
+	  devices when the temperature is over each trip point.
+	  Backward-compatible governor resembles the behaviors of thermal
+	  framework in Linux kernel 2.6. It sets cooler states whenever
+	  temperature is updated no meter cooler state change or not.
+
 config THERMAL_DEFAULT_GOV_STEP_WISE
 	bool "step_wise"
 	select THERMAL_GOV_STEP_WISE
@@ -90,7 +100,23 @@ config THERMAL_DEFAULT_GOV_POWER_ALLOCATOR
 	  system and device power allocation. This governor can only
 	  operate on cooling devices that implement the power API.
 
+config THERMAL_DEFAULT_GOV_VIRTUAL_SENSOR
+	bool "virtual_sensor"
+	select THERMAL_GOV_VIRTUAL_SENSOR
+	help
+	  Use the virtual_sensor governor as default. This throttles the
+	  devices cooling actions based on the thermal zone trip
+	  points and the cooling states.
+
 endchoice
+
+config THERMAL_BACKWARD_COMPATIBLE
+	bool "Backward-compatible thermal governor"
+	help
+	  Enable this to manage platform thermals using backward-compatible governor.
+	  Backward-compatible governor resembles the behaviors of thermal
+	  framework in Linux kernel 2.6. It sets cooler states whenever
+	  temperature is updated no meter cooler state change or not.
 
 config THERMAL_GOV_FAIR_SHARE
 	bool "Fair-share thermal governor"
@@ -117,6 +143,14 @@ config THERMAL_GOV_USER_SPACE
 	bool "User_space thermal governor"
 	help
 	  Enable this to let the user space manage the platform thermals.
+
+config THERMAL_GOV_VIRTUAL_SENSOR
+	bool "VIRTUAL_SENSOR thermal governor"
+	help
+	  Enable this to manage platform thermals using virtual_sensor governor.
+	  This throttles the devices cooling actions based on the thermal
+	  zone trip points and the cooling states.
+	  This will be useful for virtual_sensor thermal driver.
 
 config THERMAL_GOV_POWER_ALLOCATOR
 	bool "Power allocator thermal governor"
@@ -380,6 +414,30 @@ config MTK_THERMAL
 	help
 	  Enable this option if you want to have support for thermal management
 	  controller present in Mediatek SoCs
+
+config VIRTUAL_SENSOR_THERMAL
+	bool "VIRTUAL_SENSOR thermal management"
+	help
+	  Adds VIRTUAL_SENSOR thermal management implementation according to the thermal
+	  management framework. A thermal zone with several trip points will be
+	  created. Cooling devices can be bound to the trip points to cool this
+	  thermal zone if trip points reached.
+
+config THERMAL_SHUTDOWN_LAST_KMESG
+	bool "THERMAL_SHUTDOWN_LAST_KMESG save the last kmsg"
+	default n
+	help
+	  Save the last kmsg when thermal shuts down the system.
+
+config AMAZON_THERMAL
+	bool
+	prompt "Amazon thermal driver"
+	depends on THERMAL_OF && THERMAL_WRITABLE_TRIPS
+	default n
+	help
+	  This option enables Amazon thermal driver. This includes
+	  virtual sensor driver, ambient sensor driver,
+	  cooling device framework and Virtual thermal zones.
 
 menu "Texas Instruments thermal drivers"
 depends on ARCH_HAS_BANDGAP || COMPILE_TEST

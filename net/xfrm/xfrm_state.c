@@ -1887,8 +1887,9 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
 	struct xfrm_policy *pol = NULL;
 
 #ifdef CONFIG_COMPAT
-	if (in_compat_syscall())
+	/*if (in_compat_syscall())
 		return -EOPNOTSUPP;
+	*/
 #endif
 
 	if (!optval && !optlen) {
@@ -1922,6 +1923,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
 	if (err >= 0) {
 		xfrm_sk_policy_insert(sk, err, pol);
 		xfrm_pol_put(pol);
+		__sk_dst_reset(sk);
 		err = 0;
 	}
 

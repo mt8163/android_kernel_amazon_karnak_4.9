@@ -1,0 +1,7 @@
+config MTK_BTCVSD
+	bool "use btcvsd share buf driver"
+	help
+	  this config is for btcvsd driver.
+	  when bt and audio use share buffer
+	  to communicate,this config need to
+	  enable.

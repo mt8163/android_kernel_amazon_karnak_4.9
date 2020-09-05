@@ -106,6 +106,8 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_PCM512x_SPI if SPI_MASTER
 	select SND_SOC_RT286 if I2C
 	select SND_SOC_RT298 if I2C
+	select SND_SOC_RT551X if I2C
+	select SND_SOC_RT551X_SPI if SPI_MASTER
 	select SND_SOC_RT5514 if I2C
 	select SND_SOC_RT5616 if I2C
 	select SND_SOC_RT5631 if I2C
@@ -203,6 +205,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_WM9705 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
+	select SND_SOC_RT5509 if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -581,6 +584,9 @@ config SND_SOC_MAX9860
 	depends on I2C
 	select REGMAP_I2C
 
+config SND_SOC_MT6391
+	tristate
+
 config SND_SOC_PCM1681
 	tristate "Texas Instruments PCM1681 CODEC"
 	depends on I2C
@@ -684,6 +690,17 @@ config SND_SOC_RT5514
 
 config SND_SOC_RT5514_SPI
 	tristate
+config SND_SOC_RT551X
+        tristate "SND_SOC_RT551X"
+        default y if SND_SOC_RT551X_SPI=y
+
+config SND_SOC_RT551X_SPI
+        tristate "SND_SOC_RT551X_SPI"
+        depends on SPI_MASTER
+
+config SND_SOC_RT551X_TEST_ONLY
+        tristate "SND_SOC_RT551X_TEST_ONLY"
+        depends on SND_SOC_RT551X_SPI
 
 config SND_SOC_RT5616
 	tristate "Realtek RT5616 CODEC"
@@ -835,6 +852,11 @@ config SND_SOC_TLV320AIC26
 
 config SND_SOC_TLV320AIC31XX
 	tristate "Texas Instruments TLV320AIC31xx CODECs"
+	depends on I2C
+	select REGMAP_I2C
+
+config SND_SOC_TLV320AIC3101
+	tristate "Texas Instruments TLV320AIC3101 CODEC"
 	depends on I2C
 	select REGMAP_I2C
 
@@ -1088,5 +1110,10 @@ config SND_SOC_NAU8825
 config SND_SOC_TPA6130A2
 	tristate "Texas Instruments TPA6130A2 headphone amplifier"
 	depends on I2C
+
+config SND_SOC_RT5509
+	tristate "Richtek RT5509 Smart AMP"
+	depends on I2C
+	select RT_REGMAP
 
 endmenu

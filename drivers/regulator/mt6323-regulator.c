@@ -17,6 +17,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/mt6323-regulator.h>
 #include <linux/regulator/of_regulator.h>
+#include <mt-plat/mtk_boot_common.h>
 
 #define MT6323_LDO_MODE_NORMAL	0
 #define MT6323_LDO_MODE_LP	1
@@ -390,6 +391,14 @@ static int mt6323_regulator_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "Chip ID = 0x%x\n", reg_value);
 
 	for (i = 0; i < MT6323_MAX_REGULATOR; i++) {
+#ifdef CONFIG_GATING
+		/* HACK: Inorder to keep GATING led off while going into
+			 KPOC mode keep VGP1 disabled */
+		if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT) {
+			if (!strcmp("VGP1", mt6323_regulators[i].desc.name))
+				continue;
+		}
+#endif
 		config.dev = &pdev->dev;
 		config.driver_data = &mt6323_regulators[i];
 		config.regmap = mt6323->regmap;
