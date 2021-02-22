@@ -152,7 +152,7 @@ struct DumpFirstErrorStruct {
 #define CMDQ_ERR(string, args...) \
 	{ \
 		if (1) { \
-			pr_debug("[CMDQ][ERR]" string, ##args); \
+			pr_err("[CMDQ][ERR]" string, ##args); \
 			cmdq_core_save_first_dump("[CMDQ][ERR]" string, \
 						  ##args); \
 		} \
@@ -163,7 +163,7 @@ struct DumpFirstErrorStruct {
 		do { \
 			char dispatchedTag[50]; \
 			snprintf(dispatchedTag, 50, "CRDISPATCH_KEY:%s", tag); \
-			pr_debug("[CMDQ][AEE]" string, ##args); \
+			pr_warn("[CMDQ][AEE]" string, ##args); \
 			cmdq_core_save_first_dump("[CMDQ][AEE]" string, \
 						  ##args); \
 			cmdq_core_turnoff_first_dump(); \
