@@ -70,7 +70,6 @@
 #include <linux/pid_namespace.h>
 #include <linux/security.h>
 #include <linux/spinlock.h>
-#include <linux/ratelimit.h>
 
 #include <uapi/linux/android/binder.h>
 #include "binder_alloc.h"
@@ -163,7 +162,7 @@ module_param_call(stop_on_user_error, binder_set_stop_on_user_error,
 #define binder_debug(mask, x...) \
 	do { \
 		if (binder_debug_mask & mask) \
-			pr_info_ratelimited(x); \
+			pr_info(x); \
 	} while (0)
 
 #define binder_user_error(x...) \
@@ -245,6 +244,7 @@ static struct binder_transaction_log_entry *binder_transaction_log_add(
 {
 	struct binder_transaction_log_entry *e;
 	unsigned int cur = atomic_inc_return(&log->cur);
+
 	if (cur >= ARRAY_SIZE(log->entry))
 		log->full = true;
 	e = &log->entry[cur % ARRAY_SIZE(log->entry)];
@@ -965,11 +965,6 @@ binder_defer_work(struct binder_proc *proc, enum binder_deferred_state defer);
 static void binder_free_thread(struct binder_thread *thread);
 static void binder_free_proc(struct binder_proc *proc);
 static void binder_inc_node_tmpref_ilocked(struct binder_node *node);
-
-struct files_struct *binder_get_files_struct(struct binder_proc *proc)
-{
-	return get_files_struct(proc->tsk);
-}
 
 static int task_get_unused_fd_flags(struct binder_proc *proc, int flags)
 {
@@ -2533,6 +2528,7 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 		}
 	}
 }
+
 static int binder_translate_binder(struct flat_binder_object *fp,
 				   struct binder_transaction *t,
 				   struct binder_thread *thread)
@@ -4393,10 +4389,6 @@ retry:
 			if (cmd == BR_DEAD_BINDER)
 				goto done; /* DEAD_BINDER notifications can cause transactions */
 		} break;
-		default: {
-			binder_inner_proc_unlock(proc);
-			pr_info("unknown work: type %d\n", w->type);
-		} break;
 		}
 
 		if (!t)
@@ -5323,6 +5315,8 @@ static void binder_deferred_release(struct binder_proc *proc)
 	struct rb_node *n;
 	int threads, nodes, incoming_refs, outgoing_refs, active_transactions;
 
+	BUG_ON(proc->files);
+
 	mutex_lock(&binder_procs_lock);
 	hlist_del(&proc->proc_node);
 	mutex_unlock(&binder_procs_lock);
@@ -5835,6 +5829,8 @@ static void print_binder_proc_stats(struct seq_file *m,
 
 	count = binder_alloc_get_allocated_count(&proc->alloc);
 	seq_printf(m, "  buffers: %d\n", count);
+
+	binder_alloc_print_pages(m, &proc->alloc);
 
 	count = 0;
 	binder_inner_proc_lock(proc);
