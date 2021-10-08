@@ -20,7 +20,7 @@
 #define MAX_BRIGHTNESS		255
 #define MAX_NUM_COOLER_LCD_BACKLIGHT 2
 
-#if (defined(CONFIG_THERMAL_abc123) || defined(CONFIG_THERMAL_abc123))
+#if (defined(CONFIG_THERMAL_CHECKERS) || defined(CONFIG_THERMAL_CROWN))
 #define CUR_STATE0_BRIGHTNESS 255
 #define CUR_STATE1_BRIGHTNESS 200
 #define CUR_STATE2_BRIGHTNESS 165
@@ -90,7 +90,7 @@ static int virtual_sensor_set_cur_state(struct thermal_cooling_device *cdev,
 
 	max_state = pdata->max_state;
 	pdata->state = (state > max_state) ? max_state : state;
-#if (defined(CONFIG_THERMAL_abc123) || defined(CONFIG_THERMAL_abc123))
+#if (defined(CONFIG_THERMAL_CHECKERS) || defined(CONFIG_THERMAL_CROWN))
 	switch ((int)pdata->state)
 	{
 		case 1:

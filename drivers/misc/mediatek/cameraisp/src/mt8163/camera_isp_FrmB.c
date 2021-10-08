@@ -1448,6 +1448,7 @@ static long ISP_Buf_CTRL_FUNC_FRMB(unsigned long Param)
 		return -EFAULT;
 	}
 	/*  */
+	memset(&deque_buf,0,sizeof(struct ISP_DEQUE_BUF_INFO_STRUCT_FRMB));
 	if (copy_from_user(&rt_buf_ctrl, (void __user *)Param,
 			   sizeof(struct ISP_BUFFER_CTRL_STRUCT_FRMB)) == 0) {
 		rt_dma = rt_buf_ctrl.buf_id;
@@ -4548,26 +4549,6 @@ ISP_ED_BufQue_CTRL_FUNC_FRMB(struct ISP_ED_BUFQUE_STRUCT_FRMB param)
 			ret = -EFAULT;
 			return ret;
 		} else {
-			IRQ_LOG_KEEPER(
-				_CAMSV_D_IRQ, 0, _LOG_DBG,
-				"pD(%d_0x%x) MF/L(%d,%d),(%d,%d), RF/C/L(%d,%d,%d),(%d,%d,%d),dCq(%d)/Bq(%d)\n",
-				param.processID, param.callerID,
-				P2_EDBUF_MList_FirstBufIdx,
-				P2_EDBUF_MList_LastBufIdx,
-				P2_EDBUF_MgrList[P2_EDBUF_MList_FirstBufIdx]
-					.p2dupCQIdx,
-				P2_EDBUF_MgrList[P2_EDBUF_MList_LastBufIdx]
-					.p2dupCQIdx,
-				P2_EDBUF_RList_FirstBufIdx,
-				P2_EDBUF_RList_CurBufIdx,
-				P2_EDBUF_RList_LastBufIdx,
-				P2_EDBUF_RingList[P2_EDBUF_RList_FirstBufIdx]
-					.bufSts,
-				P2_EDBUF_RingList[P2_EDBUF_RList_CurBufIdx]
-					.bufSts,
-				P2_EDBUF_RingList[P2_EDBUF_RList_LastBufIdx]
-					.bufSts,
-				param.p2dupCQIdx, param.p2burstQIdx);
 			/* [2] add new element to the last of the list */
 			if (
 				P2_EDBUF_RList_FirstBufIdx ==
@@ -4643,6 +4624,37 @@ ISP_ED_BufQue_CTRL_FUNC_FRMB(struct ISP_ED_BUFQUE_STRUCT_FRMB param)
 					.p2dupCQIdx = param.p2dupCQIdx;
 				P2_EDBUF_MgrList[P2_EDBUF_MList_LastBufIdx]
 					.dequedNum = 0;
+			}
+			if (P2_EDBUF_MList_FirstBufIdx >= 0 &&
+				P2_EDBUF_MList_FirstBufIdx < _MAX_SUPPORT_P2_PACKAGE_NUM_ &&
+				P2_EDBUF_MList_LastBufIdx >= 0 &&
+				P2_EDBUF_MList_LastBufIdx < _MAX_SUPPORT_P2_PACKAGE_NUM_ &&
+				P2_EDBUF_RList_FirstBufIdx >= 0 &&
+				P2_EDBUF_RList_FirstBufIdx < _MAX_SUPPORT_P2_FRAME_NUM_ &&
+				P2_EDBUF_RList_CurBufIdx >= 0 &&
+				P2_EDBUF_RList_CurBufIdx < _MAX_SUPPORT_P2_FRAME_NUM_ &&
+				P2_EDBUF_RList_LastBufIdx >= 0 &&
+				P2_EDBUF_RList_LastBufIdx < _MAX_SUPPORT_P2_FRAME_NUM_) {
+				IRQ_LOG_KEEPER(
+					_CAMSV_D_IRQ, 0, _LOG_DBG,
+					"pD(%d_0x%x) MF/L(%d,%d),(%d,%d), RF/C/L(%d,%d,%d),(%d,%d,%d),dCq(%d)/Bq(%d)\n",
+					param.processID, param.callerID,
+					P2_EDBUF_MList_FirstBufIdx,
+					P2_EDBUF_MList_LastBufIdx,
+					P2_EDBUF_MgrList[P2_EDBUF_MList_FirstBufIdx]
+						.p2dupCQIdx,
+					P2_EDBUF_MgrList[P2_EDBUF_MList_LastBufIdx]
+						.p2dupCQIdx,
+					P2_EDBUF_RList_FirstBufIdx,
+					P2_EDBUF_RList_CurBufIdx,
+					P2_EDBUF_RList_LastBufIdx,
+					P2_EDBUF_RingList[P2_EDBUF_RList_FirstBufIdx]
+						.bufSts,
+					P2_EDBUF_RingList[P2_EDBUF_RList_CurBufIdx]
+						.bufSts,
+					P2_EDBUF_RingList[P2_EDBUF_RList_LastBufIdx]
+						.bufSts,
+					param.p2dupCQIdx, param.p2burstQIdx);
 			}
 		}
 		/* [4]update global index */

@@ -2214,7 +2214,7 @@ static void ltr559_late_resume(struct early_suspend *h)
 static int ltr559_i2c_detect(struct i2c_client *client,
 			     struct i2c_board_info *info)
 {
-	strcpy(info->type, LTR559_DEV_NAME);
+	strncpy(info->type, LTR559_DEV_NAME, sizeof(info->type));
 	return 0;
 }
 

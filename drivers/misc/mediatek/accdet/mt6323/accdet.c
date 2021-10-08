@@ -1434,11 +1434,11 @@ static void accdet_work_callback(struct work_struct *work)
 void accdet_get_dts_data(void)
 {
 	struct device_node *node = NULL;
-	int debounce[7];
+	int debounce[7] = {0};
 	#ifdef CONFIG_FOUR_KEY_HEADSET
-	int four_key[5];
+	int four_key[5] = {0};
 	#else
-	int three_key[4];
+	int three_key[4] = {0};
 	#endif
 	int ret = 0;
 

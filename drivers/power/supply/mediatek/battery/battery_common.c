@@ -39,7 +39,7 @@
 #include <linux/platform_device.h>
 #include <linux/seq_file.h>
 #include <linux/scatterlist.h>
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 #include <linux/switch.h>
 #endif
 #ifdef CONFIG_OF
@@ -95,7 +95,7 @@ static char *DISO_state_s[8] = {
 };
 #endif
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 enum DOCK_STATE_TYPE {
 	TYPE_DOCKED = 5,
 	TYPE_UNDOCKED = 6,
@@ -271,7 +271,7 @@ struct battery_data {
 	int BAT_PRESENT;
 	int BAT_TECHNOLOGY;
 	int BAT_CAPACITY;
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	struct switch_dev dock_state;
 #endif
 	/* Add for Battery Service */
@@ -337,7 +337,7 @@ static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_present_smb,
 	/* ADB CMD Discharging */
 	POWER_SUPPLY_PROP_adjust_power,
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	POWER_SUPPLY_PROP_DOCK_PRESENT,
 #endif
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
@@ -416,6 +416,15 @@ bool upmu_is_chr_det(void)
 #else
 	if (suspend_discharging == 1)
 		return false;
+
+#ifdef CONFIG_POGO_PIN_DOCK
+	if (mt_usb1_is_dock_with_power()) {
+		pr_debug(
+			    "[upmu_is_chr_det] Charger exist and USB1 dock with power\n");
+
+		return true;
+	}
+#endif
 
 	tmp32 = get_charger_detect_status();
 
@@ -561,7 +570,7 @@ static int usb_get_property(struct power_supply *psy,
 	return ret;
 }
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 static int battery_property_is_writeable(struct power_supply *psy,
 		enum power_supply_property psp)
 {
@@ -577,6 +586,10 @@ static int battery_property_is_writeable(struct power_supply *psy,
 
 	return ret;
 }
+#endif
+
+#ifdef CONFIG_POGO_PIN_DOCK
+extern u8 dock_mode ;
 #endif
 
 static int battery_get_property(struct power_supply *psy,
@@ -651,6 +664,14 @@ static int battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_adjust_power:
 		val->intval = data->adjust_power;
 		break;
+#ifdef CONFIG_POGO_PIN_DOCK
+	case POWER_SUPPLY_PROP_DOCK_PRESENT:
+		val->intval = switch_get_state(&data->dock_state)
+			!= TYPE_DOCKED ? 0 : 1;
+		dock_mode = val->intval  ;
+		printk("dock_mode=%d\n",dock_mode);
+		break;
+#endif
 #ifdef CONFIG_USB_AMAZON_DOCK
 	case POWER_SUPPLY_PROP_DOCK_PRESENT:
 		val->intval = switch_get_state(&data->dock_state)
@@ -673,13 +694,13 @@ static int battery_set_property(struct power_supply *psy,
 				enum power_supply_property psp,
 				const union power_supply_propval *val)
 {
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	int state;
 	struct battery_data *data = container_of(psy->desc, struct battery_data, psd);
 #endif
 
 	switch (psp) {
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	case POWER_SUPPLY_PROP_DOCK_PRESENT:
 		if (val->intval == 0) {
 			state = TYPE_UNDOCKED;
@@ -689,6 +710,10 @@ static int battery_set_property(struct power_supply *psy,
 				batt_cust_data.aicl_input_current_min
 				= batt_cust_data.ap15_charger_input_current_min;
 			}
+#ifdef CONFIG_POGO_PIN_DOCK
+			g_custom_charging_mode = 0;
+			wake_up_bat();
+#endif
 		} else {
 			state = TYPE_DOCKED;
 			if (g_custom_aicl_input_current == 0) {
@@ -697,6 +722,10 @@ static int battery_set_property(struct power_supply *psy,
 				batt_cust_data.aicl_input_current_min
 				= batt_cust_data.ap15_dock_input_current_min;
 			}
+#ifdef CONFIG_POGO_PIN_DOCK
+			g_custom_charging_mode = 1;
+			wake_up_bat();
+#endif
 		}
 		switch_set_state(&data->dock_state, state);
 		break;
@@ -757,7 +786,7 @@ static struct battery_data battery_main = {
 		.num_properties = ARRAY_SIZE(battery_props),
 		.get_property = battery_get_property,
 		.set_property = battery_set_property,
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 		.property_is_writeable = battery_property_is_writeable,
 #endif
 		},
@@ -2369,9 +2398,14 @@ static void battery_update(struct battery_data *bat_data)
 		battery_meter_reset();
 	} else {
 		if (BMT_status.bat_full) {
-			BMT_status.UI_SOC = 100;
-			pr_info("%s: Force to set UI_SOC[%d, %d] to 100\n",
-				__func__, BMT_status.UI_SOC, BMT_status.SOC);
+#ifdef CONFIG_POGO_PIN_DOCK
+			if(!mt_usb1_is_dock_with_power())
+#endif
+			{
+				BMT_status.UI_SOC = 100;
+				pr_debug("[recharging] UI_SOC=%d, SOC=%d\n",
+				    BMT_status.UI_SOC, BMT_status.SOC);
+			}
 		} else {
 			mt_battery_Sync_UI_Percentage_to_Real();
 		}
@@ -4479,7 +4513,7 @@ static int battery_probe(struct platform_device *dev)
 	battery_suspend_lock =
 		wakeup_source_register("battery suspend wakelock");
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	battery_main.dock_state.name = "dock";
 	battery_main.dock_state.index = 0;
 	battery_main.dock_state.state = TYPE_UNDOCKED;
@@ -4798,7 +4832,7 @@ static void battery_timer_resume(void)
 static int battery_remove(struct platform_device *dev)
 {
 	bat_metrics_uninit();
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	switch_dev_unregister(&battery_main.dock_state);
 #endif
 	pr_notice("******** battery driver remove!! ********\n");

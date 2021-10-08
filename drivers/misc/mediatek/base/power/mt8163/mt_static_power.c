@@ -450,6 +450,7 @@ int mt_spower_init(void)
 int mt_spower_get_leakage(int dev, int vol, int deg)
 {
 	WARN_ON(!(dev < MT_SPOWER_MAX));
+	WARN_ON(dev < 0);
 
 	if (!tab_validate(&sptab[dev]))
 		return 0;

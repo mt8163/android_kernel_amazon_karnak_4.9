@@ -38,6 +38,16 @@ config GTP9XX_SLEEP_MODE
 
 	 If unsure, say N.
 
+config TOUCHSCREEN_GTP9110
+	tristate "Goodix GTP 9110 touchscreens"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have a touchscreen using the GTP9110
+	  touchscreen from Goodix.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_GT967
 	tristate "Goodix GTP 967 touchscreen"
 	depends on I2C

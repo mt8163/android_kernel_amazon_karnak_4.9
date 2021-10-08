@@ -177,35 +177,31 @@ static int mtktsthermistor_probe(struct platform_device *pdev)
 	virtual_sensor->dev = &pdev->dev;
 	platform_set_drvdata(pdev, virtual_sensor);
 
-        virtual_sensor->last_update = jiffies - HZ;
+	virtual_sensor->last_update = jiffies - HZ;
 
-        virtual_sensor->therm_fw = kzalloc(sizeof(struct thermal_dev), GFP_KERNEL);
-        if (virtual_sensor->therm_fw) {
-#ifdef CONFIG_AMAZON_THERMAL
+	virtual_sensor->therm_fw = kzalloc(sizeof(struct thermal_dev), GFP_KERNEL);
+	if (virtual_sensor->therm_fw) {
 		virtual_sensor->therm_fw->name = pdev->dev.of_node->name;
-#else
-		virtual_sensor->therm_fw->name = VIRTUAL_SENSOR_THERMISTOR_NAME;
-#endif
-                virtual_sensor->therm_fw->dev = virtual_sensor->dev;
-                virtual_sensor->therm_fw->dev_ops = &mtktsthermistor_sensor_fops;
+		virtual_sensor->therm_fw->dev = virtual_sensor->dev;
+		virtual_sensor->therm_fw->dev_ops = &mtktsthermistor_sensor_fops;
 #if defined(CONFIG_VIRTUAL_SENSOR_THERMAL) || defined(CONFIG_AMAZON_THERMAL)
-                virtual_sensor->therm_fw->tdp = thermal_sensor_dt_to_params(&pdev->dev,
-					thermistor_params, &thermistor_node_names);
-                ret = thermal_dev_register(virtual_sensor->therm_fw);
-                if (ret) {
-                        dev_err(&pdev->dev, "error registering thermal device\n");
-			return -EINVAL;
-                }
+		virtual_sensor->therm_fw->tdp = thermal_sensor_dt_to_params(&pdev->dev,
+				thermistor_params, &thermistor_node_names);
+		ret = thermal_dev_register(virtual_sensor->therm_fw);
+		if (ret) {
+			dev_err(&pdev->dev, "error registering thermal device\n");
+		return -EINVAL;
+		}
 #ifdef CONFIG_AMAZON_THERMAL
 		if (IS_ERR(thermal_zone_of_sensor_register(&pdev->dev,
-				  0,  virtual_sensor, &mtktsthermistor_sensor_ops)))
+						0,  virtual_sensor, &mtktsthermistor_sensor_ops)))
 			pr_err("%s Failed to register sensor\n", __func__);
 #endif
 #endif
-        } else {
-                ret = -ENOMEM;
-                goto therm_fw_alloc_err;
-        }
+   	} else {
+		ret = -ENOMEM;
+		goto therm_fw_alloc_err;
+   	}
 
 	ret = device_create_file(&pdev->dev, &dev_attr_params);
 	if (ret)
@@ -251,7 +247,7 @@ static struct platform_driver mtktsthermistor_driver = {
 		.name  = VIRTUAL_SENSOR_THERMISTOR_NAME,
 		.owner = THIS_MODULE,
 #ifdef CONFIG_OF
-                   .of_match_table = thermistor_of_match,
+		.of_match_table = thermistor_of_match,
 #endif
 	},
 };

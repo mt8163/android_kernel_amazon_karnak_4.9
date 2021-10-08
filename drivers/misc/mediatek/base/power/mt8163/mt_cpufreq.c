@@ -630,7 +630,7 @@ void mt_cpufreq_set_pmic_phase(enum pmic_wrap_phase_id phase)
 
 	FUNC_ENTER(FUNC_LV_API);
 
-	WARN_ON(phase >= NR_PMIC_WRAP_PHASE);
+	WARN_ON(phase >= NR_PMIC_WRAP_PHASE || phase < 0);
 
 	if (pw.addr[0].cmd_addr == 0) {
 		cpufreq_warn("pmic table not initialized\n");
@@ -662,8 +662,8 @@ void mt_cpufreq_set_pmic_cmd(enum pmic_wrap_phase_id phase
 
 	FUNC_ENTER(FUNC_LV_API);
 
-	WARN_ON(phase >= NR_PMIC_WRAP_PHASE);
-	WARN_ON(idx >= pw.set[phase].nr_idx);
+	WARN_ON(phase >= NR_PMIC_WRAP_PHASE || phase < 0);
+	WARN_ON(idx >= pw.set[phase].nr_idx || idx < 0);
 
 	/* Turbo Dram/GPU B */
 	if (GPU800MHz_DRAM1866MHz_Flag) {
@@ -693,6 +693,7 @@ void mt_cpufreq_apply_pmic_cmd(int idx) /* kick spm */
 
 	FUNC_ENTER(FUNC_LV_API);
 
+	WARN_ON(pw.phase < 0);
 	WARN_ON(idx >= pw.set[pw.phase].nr_idx);
 
 	/* cpufreq_dbg("@%s: idx = %d\n", __func__, idx); */
@@ -1061,9 +1062,6 @@ static enum turbo_mode get_turbo_mode(struct mt_cpu_dvfs *p
 		mode,
 		temp,
 		target_khz);
-	cpufreq_ver("(%d), num_online_cpus = %d\n",
-		TURBO_MODE_FREQ(mode, target_khz),
-		online_cpus);
 
 	return mode;
 }
@@ -4093,7 +4091,7 @@ static ssize_t cpufreq_oppidx_proc_write(struct file *file
 	, const char __user *buffer, size_t count, loff_t *pos)
 {
 	struct mt_cpu_dvfs *p;
-	int oppidx;
+	int oppidx = 0;
 
 	char *buf = _copy_from_user_for_proc(buffer, count);
 
@@ -4135,7 +4133,7 @@ static ssize_t cpufreq_freq_proc_write(struct file *file
 	unsigned long flags;
 	struct mt_cpu_dvfs *p;
 	unsigned int cur_freq;
-	int freq, i, found;
+	int freq, i, found = 0;
 
 	char *buf = _copy_from_user_for_proc(buffer, count);
 

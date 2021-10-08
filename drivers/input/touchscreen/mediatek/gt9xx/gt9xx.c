@@ -1717,7 +1717,7 @@ static ssize_t gtp_cfg_version_read(char *buf)
 static ssize_t gt91xx_fw_version_read_proc(struct file *file, char __user *buffer, size_t size, loff_t *ppos)
 {
 	int ret;
-	u16 version_info;
+	u16 version_info = 0;
 	u8 sensor_id = 0xff;
 	char config_version = 0;
 	int len,err = -1;

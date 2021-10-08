@@ -33,7 +33,7 @@ struct cooler_sort_list{
 	struct list_head list;
 };
 
-#ifdef CONFIG_rbc123
+#ifdef CONFIG_abe123
 struct cdev_t {
 	char type[THERMAL_NAME_LENGTH];
 	unsigned long upper;
@@ -45,7 +45,7 @@ struct trip_t {
 	unsigned long temp;
 	enum thermal_trip_type type;
 	unsigned long hyst;
-#ifdef CONFIG_rbc123
+#ifdef CONFIG_abe123
 	struct cdev_t cdev[THERMAL_MAX_TRIPS];
 #endif
 };

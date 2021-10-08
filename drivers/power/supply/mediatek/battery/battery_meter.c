@@ -98,6 +98,8 @@ static bool g_USE_UI_SOC = true;
 
 bool bat_spm_timeout;
 unsigned int _g_bat_sleep_total_time;
+static int init_done;
+#define BAT_INIT_TEMP 25
 
 /* //////////////////////////////////////////////////////////
  *     PMIC AUXADC Related Variable
@@ -1125,8 +1127,6 @@ int __batt_meter_init_cust_data_from_dt(void)
 
 int batt_meter_init_cust_data(void)
 {
-	static int init_done;
-
 	if (init_done == 1)
 		return 0;
 	init_done = 1;
@@ -3197,8 +3197,13 @@ signed int battery_meter_get_charge_counter(void)
 
 signed int battery_meter_get_battery_temperature(void)
 {
+	signed int batt_temp = 0;
+
+	if (!init_done)
+		return BAT_INIT_TEMP;
+
 #if defined(CONFIG_MTK_BATTERY_LIFETIME_DATA_SUPPORT)
-	signed int batt_temp = force_get_tbat(true);
+	batt_temp = force_get_tbat(true);
 
 	if (batt_temp > gFG_max_temperature)
 		gFG_max_temperature = batt_temp;

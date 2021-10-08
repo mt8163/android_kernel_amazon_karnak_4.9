@@ -80,7 +80,11 @@ static bool slp_check_mtcmos_pll = 1;
 static u32 slp_spm_flags = {
 #if 1
 #if 1	/* defined(MTK_ICUSB_SUPPORT) */
+#ifdef CONFIG_POGO_PIN_DOCK
+	SPM_LOW_SPD_I2C | SPM_VCORE_DVS_DIS | SPM_DPD_DIS | SPM_PASR_DIS | SPM_INFRA_PDN_DIS
+#else
 	SPM_LOW_SPD_I2C | SPM_VCORE_DVS_DIS | SPM_DPD_DIS | SPM_PASR_DIS
+#endif
 #else
 #if 0
 	SPM_CPU_PDN_DIS |

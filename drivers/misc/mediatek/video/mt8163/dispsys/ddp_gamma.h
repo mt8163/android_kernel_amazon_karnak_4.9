@@ -24,6 +24,8 @@ enum disp_gamma_id_t { DISP_GAMMA0 = 0, DISP_GAMMA_TOTAL };
 
 #define DISP_GAMMA_LUT_SIZE 512
 
+#define DISP_COLOR_TM_MAX 4
+
 struct DISP_GAMMA_LUT_T {
 	enum disp_gamma_id_t hw_id;
 	unsigned int lut[DISP_GAMMA_LUT_SIZE];
@@ -35,5 +37,11 @@ struct DISP_CCORR_COEF_T {
 	enum disp_ccorr_id_t hw_id;
 	unsigned int coef[3][3];
 };
+
+struct DISP_COLOR_TRANSFORM {
+	int matrix[DISP_COLOR_TM_MAX][DISP_COLOR_TM_MAX];
+};
+
+int disp_ccorr_set_color_matrix(void *cmdq, int32_t matrix[16], int32_t hint);
 
 #endif

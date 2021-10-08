@@ -47,4 +47,11 @@ config THERMAL_KARNAK
 	help
 	  For KARNAK specific configurations for thermal related.
 
+
+config THERMAL_KAYAK
+	bool "THERMAL_KAYAK"
+	default n
+	help
+	  For KAYAK specific configurations for thermal related.
+
 source "drivers/misc/mediatek/thermal/tmp103/Kconfig"

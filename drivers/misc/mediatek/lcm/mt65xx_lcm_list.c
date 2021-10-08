@@ -974,35 +974,35 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&r69429_wqxga_dsi_vdo_lcm_drv,
 #endif
 
-#if defined(NT35521_WXGA_DSI_VDO_abf123)
-	&nt35521_wxga_dsi_vdo_abf123_lcm_drv,
+#if defined(NT35521_WXGA_DSI_VDO_GIZA)
+	&nt35521_wxga_dsi_vdo_giza_lcm_drv,
 #endif
 
-#if defined(OTM7290B_WSVGA_DSI_VDO_abc123)
-	&otm7290b_wsvga_dsi_vdo_abc123_auo_starry_lcm_drv,
-	&otm7290b_wsvga_dsi_vdo_abc123_auo_kd_lcm_drv,
-	&otm7290b_wsvga_dsi_vdo_abc123_inx_inx_lcm_drv,
-	&otm7290b_wsvga_dsi_vdo_abc123_inx_kd_lcm_drv,
-	&otm7290b_wsvga_dsi_vdo_abc123_hsd_kd_lcm_drv,
+#if defined(OTM7290B_WSVGA_DSI_VDO_MUSTANG)
+	&otm7290b_wsvga_dsi_vdo_mustang_auo_starry_lcm_drv,
+	&otm7290b_wsvga_dsi_vdo_mustang_auo_kd_lcm_drv,
+	&otm7290b_wsvga_dsi_vdo_mustang_inx_inx_lcm_drv,
+	&otm7290b_wsvga_dsi_vdo_mustang_inx_kd_lcm_drv,
+	&otm7290b_wsvga_dsi_vdo_mustang_hsd_kd_lcm_drv,
 #endif
 
-#if defined(ST7701S_WSVGA_DSI_VDO_abc123)
-        &st7701s_wsvga_dsi_vdo_abc123_st_kd_ctp_lcm_drv,
-        &st7701s_wsvga_dsi_vdo_abc123_st_inx_lcm_drv,
-        &st7701s_wsvga_dsi_vdo_abc123_st_truly_lcm_drv,
-        &st7701s_wsvga_dsi_vdo_abc123_st_protokd_lcm_drv,
-        &st7701s_wsvga_dsi_vdo_abc123_st_kd_inx_lcm_drv,
-        &st7701s_wsvga_dsi_vdo_abc123_st_kd_hsd_lcm_drv,
+#if defined(ST7701S_WSVGA_DSI_VDO_CHECKERS)
+        &st7701s_wsvga_dsi_vdo_checkers_st_kd_ctp_lcm_drv,
+        &st7701s_wsvga_dsi_vdo_checkers_st_inx_lcm_drv,
+        &st7701s_wsvga_dsi_vdo_checkers_st_truly_lcm_drv,
+        &st7701s_wsvga_dsi_vdo_checkers_st_protokd_lcm_drv,
+        &st7701s_wsvga_dsi_vdo_checkers_st_kd_inx_lcm_drv,
+        &st7701s_wsvga_dsi_vdo_checkers_st_kd_hsd_lcm_drv,
 #endif
 
-#if defined(JD936X_WXGA_DSI_VDO_abc123)
-        &jd936x_wxga_dsi_vdo_abc123_st_inx_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_kd_inx_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_kd_hsd_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_boe_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_proto_inx_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_proto_kd_inx_lcm_drv,
-        &jd936x_wxga_dsi_vdo_abc123_st_proto_kd_hsd_lcm_drv,
+#if defined(JD936X_WXGA_DSI_VDO_CROWN)
+        &jd936x_wxga_dsi_vdo_crown_st_inx_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_kd_inx_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_kd_hsd_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_boe_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_proto_inx_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_proto_kd_inx_lcm_drv,
+        &jd936x_wxga_dsi_vdo_crown_st_proto_kd_hsd_lcm_drv,
 #endif
 
 #if defined(HX8394C_WXGA_DSI_VDO)
@@ -1132,6 +1132,24 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(NT35521_WXGA_DSI_VDO_KARNAK)
 	&nt35521_wxga_dsi_vdo_karnak_kd_lcm_drv,
 #endif
+
+#if defined(JD936X_WXGA_DSI_VDO_KAYAK)
+	&jd9366_wxga_dsi_vdo_kayak_fiti_tpv_lcm_drv,
+	&jd9367_wxga_dsi_vdo_kayak_fiti_kd_lcm_drv,
+	&jd9365_wxga_dsi_vdo_kayak_fiti_kd_hsd_lcm_drv,
+	&jd9367_wxga_dsi_vdo_kayak_fiti_inx_lcm_drv,
+	&jd9366_wxga_dsi_vdo_kayak_fiti_starry_lcm_drv,
+	&jd9365d_wxga_dsi_vdo_kayak_fiti_tah_kd_lcm_drv,
+#endif
+
+#if defined(ILI9881C_WXGA_DSI_VDO_KAYAK)
+	&ili9881c_wxga_dsi_vdo_kayak_ili_kd_hsd_lcm_drv,
+#endif
+
+#if defined(NT35521_WXGA_DSI_VDO_KAYAK)
+	&nt35521_wxga_dsi_vdo_kayak_kd_lcm_drv,
+#endif
+
 };
 
 unsigned char lcm_name_list[][128] = {

@@ -204,7 +204,7 @@ static int next_fp_factor = 1;
 static int g_max_temp = 50000;	/* default=50 deg */
 static int g_temp = 50000;
 
-static unsigned int interval = 1000;	/* mseconds, 0 : no auto polling */
+static unsigned int interval = 250;	/* mseconds, 0 : no auto polling */
 
 #define MAX_TRIPS 10
 
@@ -219,7 +219,7 @@ static unsigned int interval = 1000;	/* mseconds, 0 : no auto polling */
  */
 static int trip_hyst[MAX_TRIPS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static int trip_temp[MAX_TRIPS] = {
-	117000, 117000, 85000, 75000, 65000, 55000, 45000, 35000, 25000, 15000
+	120000, 118000, 100000, 86000, 85000, 84000, 45000, 35000, 25000, 15000
 };
 
 static enum thermal_trend trip_last_trend[MAX_TRIPS] = {
@@ -231,7 +231,7 @@ static enum thermal_trend trip_last_trend[MAX_TRIPS] = {
 };
 #else
 static int trip_temp[MAX_TRIPS] = {
-	117000, 100000, 85000, 75000, 65000, 55000, 45000, 35000, 25000, 15000
+	120000, 118000, 100000, 86000, 85000, 84000, 45000, 35000, 25000, 15000
 };
 #endif
 
@@ -258,15 +258,15 @@ static int TARGET_TJS[MAX_CPT_ADAPTIVE_COOLERS] = { 55000, 0 };
 #else
 static int TARGET_TJS[MAX_CPT_ADAPTIVE_COOLERS] = { 85000, 0 };
 #endif
-static int PACKAGE_THETA_JA_RISES[MAX_CPT_ADAPTIVE_COOLERS] = { 35, 0 };
-static int PACKAGE_THETA_JA_FALLS[MAX_CPT_ADAPTIVE_COOLERS] = { 25, 0 };
-static int MINIMUM_CPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 1200, 0 };
-static int MAXIMUM_CPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 4400, 0 };
-static int MINIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 350, 0 };
-static int MAXIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 960, 0 };
+static int PACKAGE_THETA_JA_RISES[MAX_CPT_ADAPTIVE_COOLERS] = { 15, 15, 15 };
+static int PACKAGE_THETA_JA_FALLS[MAX_CPT_ADAPTIVE_COOLERS] = { 30, 30, 30 };
+static int MINIMUM_CPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 900, 900, 900 };
+static int MAXIMUM_CPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 4000, 4000, 4000 };
+static int MINIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 600, 600, 600 };
+static int MAXIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 2100, 2100, 2100 };
 static int FIRST_STEP_TOTAL_POWER_BUDGETS[
-	MAX_CPT_ADAPTIVE_COOLERS] = { 3300, 0 };
-static int MINIMUM_BUDGET_CHANGES[MAX_CPT_ADAPTIVE_COOLERS] = { 50, 0 };
+	MAX_CPT_ADAPTIVE_COOLERS] = { 3000, 2000, 1500 };
+static int MINIMUM_BUDGET_CHANGES[MAX_CPT_ADAPTIVE_COOLERS] = { 50, 50, 50 };
 
 #if THERMAL_HEADROOM
 static int p_Tpcb_correlation;
@@ -303,9 +303,9 @@ static int tp_ratio_low_fall;
 
 static int mtktscpu_debug_log;
 static int kernelmode;
-static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static int g_THERMAL_TRIP[10] = { 0, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-static int num_trip = 5;
+static int num_trip = 6;
 
 int MA_len_temp;
 static int proc_write_flag;
@@ -320,11 +320,11 @@ static const char adaptive_cooler_name[] = "cpu_adaptive_";
 #endif
 
 static char g_bind0[20] = "mtktscpu-sysrst";
-static char g_bind1[20] = "cpu02";
-static char g_bind2[20] = "cpu15";
-static char g_bind3[20] = "cpu22";
-static char g_bind4[20] = "cpu28";
-static char g_bind5[20] = "";
+static char g_bind1[20] = "mtk-cl-kshutdown00";
+static char g_bind2[20] = "cpu02";
+static char g_bind3[20] = "cpu_adaptive_0";
+static char g_bind4[20] = "cpu_adaptive_1";
+static char g_bind5[20] = "cpu_adaptive_2";
 static char g_bind6[20] = "";
 static char g_bind7[20] = "";
 static char g_bind8[20] = "";

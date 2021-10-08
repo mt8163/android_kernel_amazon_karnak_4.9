@@ -43,7 +43,7 @@
 /* ************************************ */
 
 /* Number of CPU CORE */
-#define NUMBER_OF_CORE (8)
+#define NUMBER_OF_CORE (4)
 
 /* This function pointer is for GPU LKM
  * to register a function to get GPU loading.
@@ -205,7 +205,7 @@ struct gpu_index_st {
 	int freq;
 };
 
-#define NO_CPU_CORES (8)
+#define NO_CPU_CORES (4)
 /* /< 4-Core is maximum */
 static struct cpu_index_st cpu_index_list[NO_CPU_CORES];
 static int cpufreqs[NO_CPU_CORES];

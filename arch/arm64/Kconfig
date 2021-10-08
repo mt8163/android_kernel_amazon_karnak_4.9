@@ -264,11 +264,6 @@ config PCI_DOMAINS_GENERIC
 config PCI_SYSCALL
 	def_bool PCI
 
-
-config DISABLE_AUDIT
-	bool "disable audit logging"
-
-
 source "drivers/pci/Kconfig"
 
 endmenu

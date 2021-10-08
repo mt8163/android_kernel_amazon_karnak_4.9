@@ -464,7 +464,6 @@ static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 	    (struct ion_mm_buffer_info *)buffer->priv_virt;
 	struct port_mva_info_t port_info;
 	int ret = 0;
-	bool non_vmalloc_request = false;
 
 	if (!buffer_info) {
 		IONMSG("[ion_mm_heap_phys] Error. Invalid buffer.\n");
@@ -513,11 +512,10 @@ static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 			IONMSG("[%s]Error: port %d MVA(0x%x)",
 			       __func__, port_info.eModuleID,
 			       *(unsigned int *)addr);
-			IONMSG("(region 0x%x-0x%x)(VA 0x%lx-%zu-%d)\n",
+			IONMSG("(region 0x%x-0x%x)(VA 0x%lx-%zu)\n",
 			       port_info.iova_start, port_info.iova_end,
-			       (unsigned long)buffer_info->VA, buffer->size,
-			       non_vmalloc_request);
-			*(unsigned int *)addr = 0;
+			       (unsigned long)buffer_info->VA, buffer->size);
+			*addr = 0;
 			if (port_info.flags > 0)
 				buffer_info->FIXED_MVA = 0;
 			return -EFAULT;
@@ -544,9 +542,9 @@ static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 		IONDBG("[%s] Port %d, in_len 0x%x, MVA(0x%x-%zu)",
 		       __func__, port_info.eModuleID, *(unsigned int *)len,
 		       *(unsigned int *)addr, buffer->size);
-		IONDBG("(region 0x%x--0x%x) (VA 0x%lx-%d)\n",
+		IONDBG("(region 0x%x--0x%x) (VA 0x%lx)\n",
 		       buffer_info->iova_start, buffer_info->iova_end,
-		       (unsigned long)buffer_info->VA, non_vmalloc_request);
+		       (unsigned long)buffer_info->VA);
 	}
 
 	*len = buffer->size;
@@ -704,6 +702,9 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 		bug_info = (struct ion_mm_buffer_info *)buffer->priv_virt;
 		pdbg = &bug_info->dbg_info;
 
+		if ((heap->id == ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA) &&
+		    (buffer->heap->id != ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA))
+			continue;
 		ION_PRINT_LOG_OR_SEQ(s,
 				     "0x%p %8zu %3d %3d %3d %3d %8x %3u %3lu %5d(%5d) %16s 0x%x 0x%x 0x%x 0x%x %s\n",
 				     buffer, buffer->size, buffer->kmap_cnt,
@@ -784,11 +785,20 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 int ion_mm_heap_for_each_pool(int (*fn)(int high, int order, int cache,
 					size_t size))
 {
-	struct ion_heap *heap =
-	    ion_drv_get_heap(g_ion_device, ION_HEAP_TYPE_MULTIMEDIA, 1);
-	struct ion_system_heap
-	*sys_heap = container_of(heap, struct ion_system_heap, heap);
+	struct ion_heap *heap;
+	struct ion_system_heap *sys_heap;
 	int i;
+
+	heap = ion_drv_get_heap(g_ion_device, ION_HEAP_TYPE_MULTIMEDIA, 1);
+	if (!heap) {
+		IONMSG("%s get_heap is null\n", __func__);
+		return -1;
+	}
+	sys_heap = container_of(heap, struct ion_system_heap, heap);
+	if (!sys_heap) {
+		IONMSG("%s heap is null\n", __func__);
+		return -1;
+	}
 
 	for (i = 0; i < num_orders; i++) {
 		struct ion_page_pool *pool = sys_heap->pools[i];
@@ -1219,6 +1229,7 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 				    ("config error:%d-%d,name %16.s!!!\n",
 				     param.config_buffer_param.module_id,
 				     buffer->heap->type, client->name);
+				ion_drv_put_kernel_handle(kernel_handle);
 				return -EFAULT;
 			}
 			if (((buffer_info->MVA == 0) &&

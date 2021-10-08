@@ -133,7 +133,7 @@ static int virtual_sensor_throttle(struct thermal_zone_device *tz, int trip)
 #endif
 			}
 
-			snprintf(data[0], sizeof(data[0]), "TRIP=%d", trip);
+			snprintf(data[0], sizeof(data[0]), "TRIP=%ld", target - 1);
 			snprintf(data[1], sizeof(data[1]), "THERMAL_STATE=%ld", target);
 			/*
 			 * PhoneWindowManagerMetricsHelper.java may need to filter out

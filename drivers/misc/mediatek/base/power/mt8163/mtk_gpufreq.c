@@ -1398,7 +1398,7 @@ static ssize_t mt_gpufreq_debug_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int debug = 0;
 
@@ -1436,7 +1436,7 @@ static ssize_t mt_gpufreq_limited_oc_ignore_proc_write(
 	size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	unsigned int ignore = 0;
 
@@ -1477,7 +1477,7 @@ static ssize_t mt_gpufreq_limited_low_batt_volume_ignore_proc_write(
 	size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	unsigned int ignore = 0;
 
@@ -1518,7 +1518,7 @@ static ssize_t mt_gpufreq_limited_low_batt_volt_ignore_proc_write(
 	size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	unsigned int ignore = 0;
 
@@ -1557,7 +1557,7 @@ static ssize_t mt_gpufreq_limited_thermal_ignore_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	unsigned int ignore = 0;
 
@@ -1594,7 +1594,7 @@ static ssize_t mt_gpufreq_limited_power_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	unsigned int power = 0;
 
@@ -1627,7 +1627,7 @@ static ssize_t mt_gpufreq_state_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int enabled = 0;
 
@@ -1705,7 +1705,7 @@ static ssize_t mt_gpufreq_opp_freq_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int i = 0;
 	int fixed_freq = 0;
@@ -1763,7 +1763,7 @@ static ssize_t mt_gpufreq_opp_max_freq_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int i = 0;
 	int max_freq = 0;
@@ -1851,7 +1851,7 @@ static ssize_t mt_gpufreq_fixed_freq_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int fixed_freq = 0;
 
@@ -1895,7 +1895,7 @@ static ssize_t mt_gpufreq_input_boost_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	size_t len = 0;
 
 	int debug = 0;
 

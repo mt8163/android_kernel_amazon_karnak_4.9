@@ -23,7 +23,7 @@
 #include "ddp_path.h"
 #include "ddp_reg.h"
 
-static DEFINE_SPINLOCK(g_gamma_global_lock);
+static DEFINE_MUTEX(g_gamma_global_lock);
 
 /* ======================================================================== */
 /*  GAMMA                                                                   */
@@ -74,7 +74,7 @@ static int disp_gamma_write_lut_reg(struct cmdqRecStruct *cmdq,
 	}
 
 	if (lock)
-		spin_lock(&g_gamma_global_lock);
+		mutex_lock(&g_gamma_global_lock);
 
 	gamma_lut = g_disp_gamma_lut[id];
 	if (gamma_lut == NULL) {
@@ -109,7 +109,7 @@ static int disp_gamma_write_lut_reg(struct cmdqRecStruct *cmdq,
 gamma_write_lut_unlock:
 
 	if (lock)
-		spin_unlock(&g_gamma_global_lock);
+		mutex_unlock(&g_gamma_global_lock);
 
 	return ret;
 }
@@ -138,14 +138,14 @@ disp_gamma_set_lut(const struct DISP_GAMMA_LUT_T __user *user_gamma_lut,
 	} else {
 		id = gamma_lut->hw_id;
 		if (id >= 0 && id < DISP_GAMMA_TOTAL) {
-			spin_lock(&g_gamma_global_lock);
+			mutex_lock(&g_gamma_global_lock);
 
 			old_lut = g_disp_gamma_lut[id];
 			g_disp_gamma_lut[id] = gamma_lut;
 
 			ret = disp_gamma_write_lut_reg(cmdq, id, 0);
 
-			spin_unlock(&g_gamma_global_lock);
+			mutex_unlock(&g_gamma_global_lock);
 
 			if (old_lut != NULL)
 				kfree(old_lut);
@@ -228,8 +228,16 @@ struct DDP_MODULE_DRIVER ddp_driver_gamma = {
 /* ======================================================================== */
 /*  COLOR CORRECTION                                                        */
 /* ======================================================================== */
+#define CCORR_CLIP(val, min, max) \
+		((val >= max) ? max : ((val <= min) ? min : val))
 
 static struct DISP_CCORR_COEF_T *g_disp_ccorr_coef[DISP_CCORR_TOTAL] = {NULL};
+static int g_disp_ccorr_color_matrix[3][3] = {
+	{1024, 0, 0},
+	{0, 1024, 0},
+	{0, 0, 1024} };
+static struct DISP_CCORR_COEF_T g_multiply_matrix_coef;
+static int g_disp_ccorr_without_gamma;
 
 static ddp_module_notify g_ccorr_ddp_notify;
 
@@ -244,6 +252,60 @@ static void disp_ccorr_init(enum disp_ccorr_id_t id, unsigned int width,
 	disp_ccorr_write_coef_reg(cmdq, id, 1);
 }
 
+void disp_ccorr_multiply_3x3(unsigned int ccorrCoef[3][3],
+			int color_matrix[3][3],
+			unsigned int resultCoef[3][3])
+{
+	int temp_Result;
+
+	temp_Result = (int)((ccorrCoef[0][0]*color_matrix[0][0] +
+		ccorrCoef[0][1]*color_matrix[1][0] +
+		ccorrCoef[0][2]*color_matrix[2][0]) / 1024);
+	resultCoef[0][0] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[0][0]*color_matrix[0][1] +
+		ccorrCoef[0][1]*color_matrix[1][1] +
+		ccorrCoef[0][2]*color_matrix[2][1]) / 1024);
+	resultCoef[0][1] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[0][0]*color_matrix[0][2] +
+		ccorrCoef[0][1]*color_matrix[1][2] +
+		ccorrCoef[0][2]*color_matrix[2][2]) / 1024);
+	resultCoef[0][2] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+
+	temp_Result = (int)((ccorrCoef[1][0]*color_matrix[0][0] +
+		ccorrCoef[1][1]*color_matrix[1][0] +
+		ccorrCoef[1][2]*color_matrix[2][0]) / 1024);
+	resultCoef[1][0] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[1][0]*color_matrix[0][1] +
+		ccorrCoef[1][1]*color_matrix[1][1] +
+		ccorrCoef[1][2]*color_matrix[2][1]) / 1024);
+	resultCoef[1][1] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[1][0]*color_matrix[0][2] +
+		ccorrCoef[1][1]*color_matrix[1][2] +
+		ccorrCoef[1][2]*color_matrix[2][2]) / 1024);
+	resultCoef[1][2] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+
+	temp_Result = (int)((ccorrCoef[2][0]*color_matrix[0][0] +
+		ccorrCoef[2][1]*color_matrix[1][0] +
+		ccorrCoef[2][2]*color_matrix[2][0]) / 1024);
+	resultCoef[2][0] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[2][0]*color_matrix[0][1] +
+		ccorrCoef[2][1]*color_matrix[1][1] +
+		ccorrCoef[2][2]*color_matrix[2][1]) / 1024);
+	resultCoef[2][0] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+
+	temp_Result = (int)((ccorrCoef[2][0]*color_matrix[0][2] +
+		ccorrCoef[2][1]*color_matrix[1][2] +
+		ccorrCoef[2][2]*color_matrix[2][2]) / 1024);
+	resultCoef[2][2] = CCORR_CLIP(temp_Result, -2048, 2047) & 0xFFF;
+}
+
 #define CCORR_REG(base, idx) (base + (idx)*4)
 
 static int disp_ccorr_write_coef_reg(struct cmdqRecStruct *cmdq,
@@ -251,22 +313,53 @@ static int disp_ccorr_write_coef_reg(struct cmdqRecStruct *cmdq,
 {
 	const unsigned long ccorr_base = DISPSYS_CCORR_BASE + 0x80;
 	int ret = 0;
-	struct DISP_CCORR_COEF_T *ccorr;
+	struct DISP_CCORR_COEF_T *ccorr, *multiply_matrix;
+	struct DISP_CCORR_COEF_T ccorr_default;
 
 	if (lock)
-		spin_lock(&g_gamma_global_lock);
+		mutex_lock(&g_gamma_global_lock);
 
 	ccorr = g_disp_ccorr_coef[id];
 	if (ccorr == NULL) {
-		pr_debug(
+		ccorr = &ccorr_default;
+		memset(ccorr, 0, sizeof(struct DISP_CCORR_COEF_T));
+		ccorr->coef[0][0] = 1024;
+		ccorr->coef[1][1] = 1024;
+		ccorr->coef[2][2] = 1024;
+	}
+	if (ccorr == NULL) {
+		pr_err(
 			"[GAMMA] disp_ccorr_write_coef_reg: [%d] not initialized\n",
 			id);
 		ret = -EFAULT;
 		goto ccorr_write_coef_unlock;
 	}
 
+	if (id == 0) {
+		multiply_matrix = &g_multiply_matrix_coef;
+		disp_ccorr_multiply_3x3(ccorr->coef,
+						g_disp_ccorr_color_matrix,
+						multiply_matrix->coef);
+		ccorr = multiply_matrix;
+	}
+
 	DISP_REG_SET(cmdq, DISP_REG_CCORR_EN, 1);
-	DISP_REG_MASK(cmdq, DISP_REG_CCORR_CFG, 0x6, 0x7);
+#if 0
+	/*
+	 * enable ccorr engine
+	 */
+	DISP_REG_MASK(cmdq, DISP_REG_CCORR_CFG, 0x2, 0x2);
+#else
+	/*
+	 * 1) enanle ccorr engine
+	 * 2) disable gamma in ccorr
+	 * 3) set relay mode to 0
+	 */
+	DISP_REG_MASK(cmdq,
+			DISP_REG_CCORR_CFG,
+			0x2 | (g_disp_ccorr_without_gamma << 2),
+			0x7);
+#endif
 
 	DISP_REG_SET(cmdq, CCORR_REG(ccorr_base, 0),
 		     ((ccorr->coef[0][0] << 16) | (ccorr->coef[0][1])));
@@ -281,7 +374,7 @@ static int disp_ccorr_write_coef_reg(struct cmdqRecStruct *cmdq,
 ccorr_write_coef_unlock:
 
 	if (lock)
-		spin_unlock(&g_gamma_global_lock);
+		mutex_unlock(&g_gamma_global_lock);
 
 	return ret;
 }
@@ -313,14 +406,14 @@ disp_ccorr_set_coef(const struct DISP_CCORR_COEF_T __user *user_color_corr,
 	} else {
 		id = ccorr->hw_id;
 		if (id >= 0 && id < DISP_CCORR_TOTAL) {
-			spin_lock(&g_gamma_global_lock);
+			mutex_lock(&g_gamma_global_lock);
 
 			old_ccorr = g_disp_ccorr_coef[id];
 			g_disp_ccorr_coef[id] = ccorr;
 
 			ret = disp_ccorr_write_coef_reg(cmdq, id, 0);
 
-			spin_unlock(&g_gamma_global_lock);
+			mutex_unlock(&g_gamma_global_lock);
 
 			if (old_ccorr != NULL)
 				kfree(old_ccorr);
@@ -332,6 +425,43 @@ disp_ccorr_set_coef(const struct DISP_CCORR_COEF_T __user *user_color_corr,
 			ret = -EFAULT;
 		}
 	}
+
+	return ret;
+}
+
+int disp_ccorr_set_color_matrix(void *cmdq, int32_t matrix[16], int32_t hint)
+{
+	int ret = 0;
+	int i, j;
+	int ccorr_without_gamma = 0;
+
+	if (cmdq == NULL) {
+		pr_err("[GAMMA] %s: cmdq can not be NULL\n", __func__);
+		return -EFAULT;
+	}
+
+	mutex_lock(&g_gamma_global_lock);
+
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3; j++) {
+			/* Copy Color Matrix */
+			g_disp_ccorr_color_matrix[i][j] = matrix[i*4 + j];
+
+			if (ccorr_without_gamma == 1)
+				continue;
+
+			if (i == j && g_disp_ccorr_color_matrix[i][j] != 1024)
+				ccorr_without_gamma = 1;
+			else if (i != j && g_disp_ccorr_color_matrix[i][j] != 0)
+				ccorr_without_gamma = 1;
+		}
+	}
+
+	g_disp_ccorr_without_gamma = ccorr_without_gamma;
+
+	disp_ccorr_write_coef_reg(cmdq, 0, 0);
+
+	mutex_unlock(&g_gamma_global_lock);
 
 	return ret;
 }
@@ -349,12 +479,31 @@ static int disp_ccorr_config(enum DISP_MODULE_ENUM module,
 static int disp_ccorr_io(enum DISP_MODULE_ENUM module, int msg,
 			 unsigned long arg, void *cmdq)
 {
+	struct DISP_COLOR_TRANSFORM color_transform;
+	unsigned int i;
+
 	switch (msg) {
 	case DISP_IOCTL_SET_CCORR:
 		if (disp_ccorr_set_coef((struct DISP_CCORR_COEF_T *)arg, cmdq) <
 		    0) {
 			pr_err("DISP_IOCTL_SET_CCORR: failed\n");
 			return -EFAULT;
+		}
+		break;
+
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
+		if (copy_from_user(&color_transform, (void *)arg,
+			sizeof(struct DISP_COLOR_TRANSFORM))) {
+			pr_err("DISP_IOCTL_SUPPORT_COLOR_TRANSFORM: failed\n");
+			return -EFAULT;
+		}
+
+		for (i = 0 ; i < 3; i++) {
+			if (color_transform.matrix[3][i] != 0 ||
+				color_transform.matrix[i][3] != 0) {
+				pr_warn("DISP_IOCTL_SUPPORT_COLOR_TRANSFORM: unsupported matrix\n");
+				return -EFAULT;
+			}
 		}
 		break;
 	}

@@ -66,7 +66,7 @@ struct BTS_TEMPERATURE {
 };
 /* BTS_TEMPERATURE;*/
 
-#ifdef CONFIG_THERMAL_abc123
+#ifdef CONFIG_THERMAL_CROWN
 #define NTC_TBL_SIZE_ERROR -200
 static int ntc_tbl_size = 0;
 static struct BTS_TEMPERATURE *BTS_Temperature_Table;
@@ -82,26 +82,28 @@ struct mtkts_bts_channel_param {
 	char *channelName;
 };
 
-#if defined(CONFIG_THERMAL_abc123)
-#include "inc/mtk_ts_board_abc123.h"
-#elif defined(CONFIG_THERMAL_abc123)
-#include "inc/mtk_ts_board_abc123.h"
-#elif defined(CONFIG_THERMAL_abh123)
-#include "inc/mtk_ts_board_abh123.h"
-#elif defined(CONFIG_THERMAL_rbc123)
-#include "inc/mtk_ts_board_rbc123.h"
-#elif defined(CONFIG_THERMAL_abc123)
-#include "inc/mtk_ts_board_abh123.h"
-#elif defined(CONFIG_THERMAL_abg123)
-#include "inc/mtk_ts_board_abg123.h"
+#if defined(CONFIG_THERMAL_CROWN)
+#include "inc/mtk_ts_board_crown.h"
+#elif defined(CONFIG_THERMAL_CHECKERS)
+#include "inc/mtk_ts_board_checkers.h"
+#elif defined(CONFIG_THERMAL_BISCUIT)
+#include "inc/mtk_ts_board_biscuit.h"
+#elif defined(CONFIG_THERMAL_ROOK)
+#include "inc/mtk_ts_board_rook.h"
+#elif defined(CONFIG_THERMAL_SONAR)
+#include "inc/mtk_ts_board_biscuit.h"
+#elif defined(CONFIG_THERMAL_DOUGLAS)
+#include "inc/mtk_ts_board_douglas.h"
 #elif defined(CONFIG_THERMAL_KARNAK)
 #include "inc/mtk_ts_board_karnak.h"
-#elif defined(CONFIG_THERMAL_abc123)
-#include "inc/mtk_ts_board_abc123.h"
-#elif defined(CONFIG_THERMAL_abc123)
-#include "inc/mtk_ts_board_abc123.h"
+#elif defined(CONFIG_THERMAL_MUSTANG)
+#include "inc/mtk_ts_board_mustang.h"
+#elif defined(CONFIG_THERMAL_KAYAK)
+#include "inc/mtk_ts_board_kayak.h"
+#elif defined(CONFIG_THERMAL_CHECKERS)
+#include "inc/mtk_ts_board_checkers.h"
 #else
-#include "inc/mtk_ts_board_abf123.h"
+#include "inc/mtk_ts_board_giza.h"
 #endif
 
 struct gadc_thermal_info {
@@ -201,7 +203,7 @@ static signed short mtkts_bts_thermistor_conver_temp(signed int Res)
 	signed int RES1 = 0, RES2 = 0;
 	signed int TAP_Value = -200, TMP1 = 0, TMP2 = 0;
 
-#ifdef CONFIG_THERMAL_abc123
+#ifdef CONFIG_THERMAL_CROWN
 	if (ntc_tbl_size <= 0) {
 		pr_err("ntc_tbl_size value %d error\n",ntc_tbl_size);
 		return NTC_TBL_SIZE_ERROR;
@@ -285,7 +287,7 @@ static signed short mtk_ts_bts_volt_to_temp(int index, unsigned int dwVolt)
 	mtkts_bts_dprintk("index=%d, dwVCriAP=%d, TRes=%d\n",
 		index, dwVCriAP, TRes);
 	bts_channel_param[index].g_AP_TemperatureR = TRes;
-#ifdef CONFIG_THERMAL_abc123
+#ifdef CONFIG_THERMAL_CROWN
 	mtkts_bts_prepare_table(bts_channel_param[index].g_RAP_ntc_table);
 #endif
 
@@ -758,7 +760,7 @@ void mtkts_bts_copy_table(struct BTS_TEMPERATURE *des,
 		des[i] = src[i];
 }
 
-#ifdef CONFIG_THERMAL_abc123
+#ifdef CONFIG_THERMAL_CROWN
 void mtkts_bts_prepare_table(int table_num)
 {
 
