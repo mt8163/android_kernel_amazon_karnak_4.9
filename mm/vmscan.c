@@ -49,7 +49,6 @@
 #include <linux/dax.h>
 #include <linux/debugfs.h>
 #include <linux/simple_lmk.h>
-#include <linux/psi.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -3489,7 +3488,6 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 		bool raise_priority = true;
 
 		sc.reclaim_idx = classzone_idx;
-		simple_lmk_decide_reclaim(sc.priority);
 
 		/*
 		 * If the number of buffer_heads exceeds the maximum allowed
