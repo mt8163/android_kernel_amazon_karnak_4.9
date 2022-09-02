@@ -1,5 +1,4 @@
 subdir-ccflags-y += -Werror
-ccflags-y += -Wno-maybe-uninitialized
 
 mtk-vcu-y += mtk_vcu.o
 
