@@ -202,7 +202,7 @@ static const struct dentry_operations debugfs_dops = {
 
 static int debug_fill_super(struct super_block *sb, void *data, int silent)
 {
-	static const struct tree_descr debug_files[] = {{""}};
+	static struct tree_descr debug_files[] = {{""}};
 	struct debugfs_fs_info *fsi;
 	int err;
 
