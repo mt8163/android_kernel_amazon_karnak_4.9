@@ -2454,8 +2454,8 @@ static unsigned long migrate_lru_pages(unsigned long *nr, enum lru_list lru,
 
 	/* Migrate active anon LRU when inactive < active */
 	src_zone = &pgdat->node_zones[sc->reclaim_idx];
-	if (zone_page_state(src_zone, NR_INACTIVE_ANON) <
-			zone_page_state(src_zone, NR_ACTIVE_ANON))
+	if (zone_page_state(src_zone, (enum zone_stat_item)NR_INACTIVE_ANON) <
+			zone_page_state(src_zone, (enum zone_stat_item)NR_ACTIVE_ANON))
 		lru = LRU_ACTIVE_ANON;
 
 	/* If no available swap space, double the number of page migration */
