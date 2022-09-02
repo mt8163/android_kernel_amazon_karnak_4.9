@@ -216,7 +216,7 @@ static int mt_soc_ana_debug_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t mt_soc_ana_debug_read(struct file *file, char __user *buf,
+static noinline ssize_t mt_soc_ana_debug_read(struct file *file, char __user *buf,
 				     size_t count, loff_t *pos)
 {
 	const int size = 4096;
@@ -341,7 +341,7 @@ static int mt_soc_debug_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t mt_soc_debug_read(struct file *file, char __user *buf,
+static noinline ssize_t mt_soc_debug_read(struct file *file, char __user *buf,
 	size_t count, loff_t *pos)
 {
 	const int size = 4096;
