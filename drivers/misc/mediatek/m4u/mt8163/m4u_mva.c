@@ -33,7 +33,7 @@
 #define MVAGRAPH_INDEX(mva) (mva>>MVA_BLOCK_SIZE_ORDER)
 
 
-static short mvaGraph[MVA_MAX_BLOCK_NR + 1];
+static unsigned short mvaGraph[MVA_MAX_BLOCK_NR + 1];
 static void *mvaInfoGraph[MVA_MAX_BLOCK_NR + 1];
 static DEFINE_SPINLOCK(gMvaGraph_lock);
 
