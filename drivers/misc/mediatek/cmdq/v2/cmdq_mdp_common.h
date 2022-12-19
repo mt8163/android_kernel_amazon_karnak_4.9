@@ -16,6 +16,7 @@
 
 #include "cmdq_core.h"
 #include "cmdq_def.h"
+#include "cmdq_virtual.h"
 
 #include <linux/types.h>
 
@@ -24,7 +25,7 @@
 #endif
 
 /* dump mmsys config */
-typedef void (*CmdqDumpMMSYSConfig)(void);
+// typedef void (*CmdqDumpMMSYSConfig)(void);
 
 /* VENC callback function */
 typedef int32_t (*CmdqVEncDumpInfo)(uint64_t engineFlag, int level);
