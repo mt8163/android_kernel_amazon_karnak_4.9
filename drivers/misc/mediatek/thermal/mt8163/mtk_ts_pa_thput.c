@@ -96,10 +96,10 @@ static int mdinfoex_threshold[MAX_MDINFOEX_OPCODE] = {0};
 struct md_info g_pinfo_list[] = {
 	{"TXPWR_MD1", -127, "db", -127, 0},
 	{"TXPWR_MD2", -127, "db", -127, 1},
-	{"RFTEMP_2G_MD1", -127000, "m¢XC", -127000, 2},
-	{"RFTEMP_2G_MD2", -127000, "m¢XC", -127000, 3},
-	{"RFTEMP_3G_MD1", -127000, "m¢XC", -127000, 4},
-	{"RFTEMP_3G_MD2", -127000, "m¢XC", -127000, 5}
+	{"RFTEMP_2G_MD1", -127000, "mcXC", -127000, 2},
+	{"RFTEMP_2G_MD2", -127000, "mcXC", -127000, 3},
+	{"RFTEMP_3G_MD1", -127000, "mcXC", -127000, 4},
+	{"RFTEMP_3G_MD2", -127000, "mcXC", -127000, 5}
 };
 
 #if MTK_TS_PA_THPUT_VIA_CCCI == 1
