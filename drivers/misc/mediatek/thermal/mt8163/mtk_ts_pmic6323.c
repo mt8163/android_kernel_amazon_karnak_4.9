@@ -403,7 +403,7 @@ static int tspmic_sysrst_set_cur_state(struct thermal_cooling_device *cdev,
 		pr_err("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 
 		/* BUG(); */
-		*(unsigned int *)0x0 = 0xdead;
+		*(unsigned volatile int *)0x0 = 0xdead;
 		/* arch_reset(0,NULL); */
 	}
 	return 0;

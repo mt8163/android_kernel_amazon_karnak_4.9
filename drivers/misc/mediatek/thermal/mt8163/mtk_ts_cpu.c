@@ -2974,7 +2974,7 @@ static int sysrst_cpu_set_cur_state(struct thermal_cooling_device *cdev,
 		/* To trigger data abort to reset the system
 		 *for thermal protection.
 		 */
-		*(unsigned int *)0x0 = 0xdead;
+		*(unsigned volatile int *)0x0 = 0xdead;
 	}
 	return 0;
 }
