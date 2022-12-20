@@ -1103,7 +1103,7 @@ static int mtk_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 		/* need reverse the direction for gpiolib */
 		return !mtk_pinctrl_get_gpio_direction(pctl, offset);
 	} else {
-		pr_info("pinctrl direction array is NULL of phone\n");
+		//pr_info("pinctrl direction array is NULL of phone\n");
 	}
 #endif
 
