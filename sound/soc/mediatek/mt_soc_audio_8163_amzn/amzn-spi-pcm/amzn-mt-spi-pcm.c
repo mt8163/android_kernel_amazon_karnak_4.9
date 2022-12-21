@@ -28,12 +28,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/of_device.h>
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#define OVERRUN_METRICS_STR_LEN 128
-/* 16ms */
-#define METRIC_DELAY_JIFFIES msecs_to_jiffies(16)
-#endif
 
 #include "dough.h"
 #include "amzn-mt-spi-pcm.h"
@@ -69,13 +63,6 @@
 struct amzn_spi_priv {
 	struct workqueue_struct *spi_wq;
 	struct work_struct spi_work;
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	struct workqueue_struct *metrics_wq;
-	struct delayed_work metrics_kernel_work;
-	struct delayed_work metrics_fpga_work;
-	size_t kernel_overruns;
-	size_t fpga_overruns;
-#endif
 	struct snd_pcm_substream *substream;
 	uint8_t *dma_vaddr;
 	dma_addr_t dma_paddr;
@@ -184,38 +171,6 @@ static struct snd_pcm_hw_constraint_list constraints_sample_rates = {
 	.count = ARRAY_SIZE(soc_normal_supported_sample_rates),
 	.list = soc_normal_supported_sample_rates,
 };
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-static void kernel_overrun_metrics(struct work_struct *work)
-{
-	char buf[OVERRUN_METRICS_STR_LEN];
-
-	/* No need of logging 0 overruns */
-	if (spi_data.kernel_overruns) {
-		snprintf(buf, OVERRUN_METRICS_STR_LEN,
-			"amzn-mt-spi-pcm:KernelOverrun:num=%zu;CT;1:NR",
-			 spi_data.kernel_overruns);
-
-		log_to_metrics(ANDROID_LOG_WARN, "AudioRecordOverrun", buf);
-		spi_data.kernel_overruns = 0;
-	}
-}
-
-static void fpga_overrun_metrics(struct work_struct *work)
-{
-	char buf[OVERRUN_METRICS_STR_LEN];
-
-	/* No need of logging 0 overruns */
-	if (spi_data.fpga_overruns) {
-		snprintf(buf, OVERRUN_METRICS_STR_LEN,
-			"amzn-mt-spi-pcm:FPGAOverrun:num=%zu;CT;1:NR",
-			 spi_data.fpga_overruns);
-
-		log_to_metrics(ANDROID_LOG_WARN, "AudioRecordOverrun", buf);
-		spi_data.fpga_overruns = 0;
-	}
-}
-#endif
 
 /*
  * ASoC Platform driver
@@ -326,17 +281,6 @@ static int amzn_mt_spi_pcm_open(struct snd_pcm_substream *substream)
 		return -ENOMEM;
 	}
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	spi_data.metrics_wq = alloc_workqueue("audio_overrun_metrics",
-					WQ_MEM_RECLAIM, 0);
-	if (spi_data.metrics_wq == NULL) {
-		pr_err("%s:Couldn't alloc_workqueue\n", __func__);
-		destroy_workqueue(spi_data.spi_wq);
-		spi_data.spi_wq = NULL;
-		return -ENOMEM;
-	}
-#endif
-
 	spi_data.cur_write_offset = 0;
 	spi_data.elapsed = 0;
 
@@ -344,12 +288,6 @@ static int amzn_mt_spi_pcm_open(struct snd_pcm_substream *substream)
 	spin_lock_init(&(spi_data.write_spinlock));
 	spi_data.substream = substream;
 	INIT_WORK(&(spi_data.spi_work), spi_data_read);
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	INIT_DELAYED_WORK(&(spi_data.metrics_kernel_work),
-		kernel_overrun_metrics);
-	INIT_DELAYED_WORK(&(spi_data.metrics_fpga_work),
-		fpga_overrun_metrics);
-#endif
 	return 0;
 }
 
@@ -360,14 +298,6 @@ static int amzn_mt_spi_pcm_close(struct snd_pcm_substream *substream)
 		destroy_workqueue(spi_data.spi_wq);
 		spi_data.spi_wq = NULL;
 	}
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	if (spi_data.metrics_wq) {
-		destroy_workqueue(spi_data.metrics_wq);
-		spi_data.metrics_wq = NULL;
-	}
-#endif
-
 	pr_info("%s: End\n", __func__);
 
 	return 0;
@@ -380,10 +310,6 @@ static int amzn_mt_spi_pcm_hw_free(struct snd_pcm_substream *ss)
 		(void *)ss->runtime->dma_addr);
 
 	flush_workqueue(spi_data.spi_wq);
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	flush_workqueue(spi_data.metrics_wq);
-#endif
 
 	if (spi_data.dma_vaddr) {
 #if !defined SPI_USES_HDMI_BUFFER && !defined SPI_USES_LOCAL_DMA
@@ -608,14 +534,6 @@ static void spi_data_read(struct work_struct *work)
 				time_diff_usec, overrun_duration,
 				slept_duration, spi_duration,
 				++spi_priv_data->fpga_overruns);
-#ifdef CONFIG_AMAZON_METRICS_LOG
-			 /* All overruns occurring within METRIC_DELAY_JIFFIES
-			  * will log once since this doesn't queue same work
-			  */
-			 queue_delayed_work(spi_priv_data->metrics_wq,
-			    &(spi_priv_data->metrics_fpga_work),
-				METRIC_DELAY_JIFFIES);
-#endif
 		}
 
 		if (!get_run_thread()) {
@@ -801,13 +719,6 @@ static int amzn_mt_spi_pcm_copy(struct snd_pcm_substream *substream,
 			__func__, pos, count, spi_data.elapsed,
 			src_offset, bytes_to_cpy, end,
 			spi_data.cur_write_offset, ++spi_data.kernel_overruns);
-#ifdef CONFIG_AMAZON_METRICS_LOG
-		/* All overruns occurring within METRIC_DELAY_JIFFIES will
-		* log once since queue_delayed_work() doesn't queue same work
-		*/
-		queue_delayed_work(spi_data.metrics_wq,
-			&(spi_data.metrics_kernel_work), METRIC_DELAY_JIFFIES);
-#endif
 	}
 #ifdef SPI_DATA_DEBUG
 	else {

@@ -63,7 +63,6 @@
 
 #include <mt-plat/charging.h>
 #include <mt-plat/battery_meter.h>
-#include "battery_metrics.h"
 #include <mt-plat/battery_common.h>
 #include <mach/mtk_battery_meter.h>
 #include <mach/mtk_charging.h>
@@ -72,9 +71,6 @@
 #include <mt-plat/internal_charging.h>
 #endif
 
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
 
 /* ////////////////////////// */
 /* // Smart Battery Structure */
@@ -2268,7 +2264,6 @@ static bool mt_battery_0Percent_tracking_check(void)
 	pr_notice("0Percent, VBAT < %d UI_SOC=%d\r\n",
 		batt_cust_data.system_off_voltage, BMT_status.UI_SOC);
 
-	bat_metrics_critical_shutdown();
 
 	return resetBatteryMeter;
 }
@@ -2412,7 +2407,6 @@ static void battery_update(struct battery_data *bat_data)
 	}
 
 	battery_charging_control(CHARGING_CMD_GET_FAULT_TYPE, &chg_fault_type);
-	bat_metrics_chg_fault(chg_fault_type);
 
 	pr_debug("UI_SOC=(%d), resetBatteryMeter=(%d)\n",
 		    BMT_status.UI_SOC, resetBatteryMeter);
@@ -2467,7 +2461,6 @@ static void battery_update(struct battery_data *bat_data)
 			    bat_data->BAT_CAPACITY);
 	}
 #endif
-	bat_metrics_chg_state(bat_data->BAT_STATUS);
 	power_supply_changed(bat_psy);
 }
 
@@ -3241,10 +3234,6 @@ static void mt_battery_thermal_check(void)
 		if (BMT_status.temperature <= -10) {
 			pr_notice("[Battery] Tbat(%d)<= -10, system need power down.\n",
 				BMT_status.temperature);
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-			life_cycle_set_thermal_shutdown_reason(
-				THERMAL_SHUTDOWN_REASON_BATTERY);
-#endif
 			orderly_poweroff(true);
 		}
 #else
@@ -3406,8 +3395,6 @@ static void mt_battery_charger_detect_check(void)
 			getrawmonotonic(&chr_plug_in_time);
 			g_custom_plugin_time = 0;
 			g_custom_charging_cv = -1;
-			bat_metrics_top_off_mode(false, 0);
-
 			mt_charger_type_detection();
 
 			if ((BMT_status.charger_type == STANDARD_HOST)
@@ -3443,8 +3430,6 @@ static void mt_battery_charger_detect_check(void)
 
 		mt_usb_disconnect();
 	}
-
-	bat_metrics_chrdet(BMT_status.charger_type);
 }
 
 static void mt_kpoc_power_off_check(void)
@@ -3522,7 +3507,6 @@ void do_chrdet_int_task(void)
 		if (upmu_is_chr_det() == true) {
 			pr_notice("[do_chrdet_int_task] charger exist!\n");
 			BMT_status.charger_exist = true;
-			bat_metrics_vbus(true);
 			if (!is_usb_rdy()) {
 				usb_update(&usb_main);
 				ac_update(&ac_main);
@@ -3546,7 +3530,6 @@ void do_chrdet_int_task(void)
 			pr_notice("[do_chrdet_int_task] charger NOT exist!\n");
 
 			BMT_status.charger_exist = false;
-			bat_metrics_vbus(false);
 			BMT_status.force_trigger_charging = true;
 			if (!is_usb_rdy()) {
 				usb_update(&usb_main);
@@ -3661,7 +3644,6 @@ void BAT_thread(void)
 
 		if (total_time_plug_in > PLUGIN_THRESHOLD) {
 			g_custom_charging_cv = BATTERY_VOLT_04_100000_V;
-			bat_metrics_top_off_mode(true, total_time_plug_in);
 
 			if (!bat_7days_flag)
 				bat_7days_flag = true;
@@ -3675,7 +3657,6 @@ void BAT_thread(void)
 
 		if (g_custom_charging_mode == 1 && !bat_demo_flag) {
 			bat_demo_flag = true;
-			bat_metrics_demo_mode(true, total_time_plug_in);
 		}
 		pr_notice("total_time_plug_in(%lu), cv(%d)\r\n",
 			total_time_plug_in, g_custom_charging_cv);
@@ -4738,8 +4719,6 @@ static int battery_probe(struct platform_device *dev)
 #endif
 	g_bat_init_flag = true;
 
-	bat_metrics_init();
-
 #if defined(CONFIG_MTK_DUAL_INPUT_CHARGER_SUPPORT)
 	if (g_vcdt_irq_delay_flag == true)
 		do_chrdet_int_task();
@@ -4831,7 +4810,6 @@ static void battery_timer_resume(void)
 
 static int battery_remove(struct platform_device *dev)
 {
-	bat_metrics_uninit();
 #if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	switch_dev_unregister(&battery_main.dock_state);
 #endif
@@ -4972,7 +4950,6 @@ static int battery_pm_suspend(struct device *device)
 	struct platform_device *pdev = to_platform_device(device);
 
 	WARN_ON(pdev == NULL);
-	bat_metrics_suspend();
 
 	return ret;
 }
@@ -4984,7 +4961,6 @@ static int battery_pm_resume(struct device *device)
 	struct platform_device *pdev = to_platform_device(device);
 
 	WARN_ON(pdev == NULL);
-	bat_metrics_resume();
 
 	return ret;
 }

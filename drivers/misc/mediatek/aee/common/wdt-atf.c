@@ -52,10 +52,6 @@
 #include <mrdump_private.h>
 #include <mt-plat/upmu_common.h>
 
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
-
 #define THREAD_INFO(sp) ((struct thread_info *) \
 				((unsigned long)(sp) & ~(THREAD_SIZE - 1)))
 
@@ -665,10 +661,6 @@ void aee_wdt_atf_info(unsigned int cpu, struct pt_regs *regs)
 	} else
 #endif
 		__mrdump_create_oops_dump(AEE_REBOOT_MODE_WDT, regs, "WDT/HWT");
-#endif
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-	life_cycle_set_boot_reason(WARMBOOT_BY_KERNEL_WATCHDOG);
 #endif
 
 	aee_exception_reboot();

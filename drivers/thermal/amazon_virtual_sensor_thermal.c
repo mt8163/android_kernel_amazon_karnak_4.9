@@ -34,7 +34,6 @@
 #include <linux/thermal_framework.h>
 #include <linux/cpufreq.h>
 #include <thermal_core.h>
-#include <amazon_thermal_life_cycle_reasons.h>
 
 #define DMF 1000
 #define NUM_OF_MOVING_AVG_PROP 4
@@ -191,8 +190,7 @@ static int virtual_sensor_thermal_notify(struct thermal_zone_device *thermal,
 				int trip, enum thermal_trip_type trip_type)
 {
 	if (trip_type == THERMAL_TRIP_CRITICAL)
-		amazon_thermal_set_shutdown_reason(thermal);
-
+		pr_info("Critical Warning Thermal Has Tripped");
 	return 0;
 }
 

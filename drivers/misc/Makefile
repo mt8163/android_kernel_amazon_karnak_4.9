@@ -62,7 +62,6 @@ obj-$(CONFIG_MEDIATEK_SOLUTION) += mediatek/
 obj-$(CONFIG_IDME) 		+= idme.o
 obj-$(CONFIG_GATING)		+= gating.o
 obj-$(CONFIG_SILENT_OTA)	+= silent-ota.o
-obj-$(CONFIG_ONETIME_METRIC)    += metrics.o
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_core.o
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_bugs.o
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_heap.o

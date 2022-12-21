@@ -26,11 +26,6 @@
 #include <linux/input/mt.h>
 #endif
 
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#include <linux/metricslog.h>
-#define METRICS_STR_LEN 320
-#endif
-
 static const char *goodix_ts_name = "goodix-ts";
 static const char *goodix_input_phys = "input/ts";
 static struct workqueue_struct *goodix_wq;
@@ -3416,10 +3411,6 @@ static void gtp_esd_check_func(struct work_struct *work)
 	s32 ret = -1;
 	struct goodix_ts_data *ts = NULL;
 	u8 esd_buf[5] = {0x80, 0x40};
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char buf[METRICS_STR_LEN] = {0};
-#endif
-
 	GTP_DEBUG_FUNC();
 	ts = i2c_get_clientdata(i2c_connect_client);
 
@@ -3518,18 +3509,6 @@ static void gtp_esd_check_func(struct work_struct *work)
 			msleep(50);
 			gtp_send_cfg(ts->client);
 		}
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		minerva_metrics_log(buf, 320, "%s:%s:100:%s,%s,%s,%s,"
-			"lcm_state=None;SY,ESD_Recovery=1;IN:us-east-1",
-			METRICS_LCD_GROUP_ID, METRICS_LCD_SCHEMA_ID,
-			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_MODEL_KEY,
-			PREDEFINED_TZ_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-		snprintf(buf, sizeof(buf),
-	"gt9xx:watchdog :read_failure=1;CT;1:NR");
-		log_to_metrics(ANDROID_LOG_INFO,
-		"TouchEvent", buf);
-#endif
 	}
 
 	if (!ts->gtp_is_suspend)

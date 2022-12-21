@@ -83,13 +83,6 @@ static unsigned long timer_pos;
 #define LONG_PWRKEY_PRESS_TIME	500000000
 #endif
 
-#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#include <linux/metricslog.h>
-static struct work_struct metrics_work;
-static bool pwrkey_press;
-static void pwrkey_log_to_metrics(struct work_struct *data);
-#endif
-
 #define RELEASE_PWRKEY_TIME		(3)	/* 3sec */
 #define PWRKEY_INITIAL_STATE (0)
 
@@ -809,30 +802,6 @@ static irqreturn_t watchdog_int_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#define PWRKEY_METRICS_STR_LEN 512
-static void pwrkey_log_to_metrics(struct work_struct *data)
-{
-	char *action;
-	char buf[PWRKEY_METRICS_STR_LEN];
-	action = (pwrkey_press) ? "press" : "release";
-
-#if defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	minerva_metrics_log(buf, PWRKEY_METRICS_STR_LEN,
-		"%s:%s:100:%s,report_action_is_action=%s;SY:us-east-1",
-		METRICS_PWRKEY_GROUP_ID, METRICS_PWRKEY_SCHEMA_ID,
-		PREDEFINED_ESSENTIAL_KEY, action);
-#endif
-
-#if defined (CONFIG_AMAZON_METRICS_LOG)
-	snprintf(buf, PWRKEY_METRICS_STR_LEN,
-		"%s:powi%c:report_action_is_%s=1;CT;1:NR", __func__,
-		action[0], action);
-	log_to_metrics(ANDROID_LOG_INFO, "PowerKeyEvent", buf);
-#endif
-}
-#endif
-
 static irqreturn_t pwrkey_int_handler(int irq, void *dev_id)
 {
 	struct mt6323_chip_priv *chip = (struct mt6323_chip_priv *)dev_id;
@@ -891,15 +860,6 @@ static irqreturn_t pwrkey_int_handler(int irq, void *dev_id)
 		kpd_pwrkey_pmic_handler(0x1);
 		upmu_set_rg_pwrkey_int_sel(1);
 	}
-
-#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	if (chip->pressed == 1)
-		pwrkey_press = true;
-	else
-		pwrkey_press = false;
-	schedule_work(&metrics_work);
-#endif
-
 	return IRQ_HANDLED;
 }
 
@@ -1827,10 +1787,6 @@ static int pmic_mt6323_probe(struct platform_device *dev)
 		     HRTIMER_MODE_REL);
 	chip->long_press_pwrkey_shutdown_timer.function =
 	lp_pwrkey_shutdown_timer_func;
-
-#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	INIT_WORK(&metrics_work, pwrkey_log_to_metrics);
-#endif
 
 	/* LPRST is for preloader check only. It should be cleared in next boot. */
 	rtc_mark_clear_lprst();

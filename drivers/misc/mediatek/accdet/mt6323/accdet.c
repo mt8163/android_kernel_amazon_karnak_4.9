@@ -25,10 +25,6 @@
 #include <linux/ts3a225e.h>
 #endif
 
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#include <linux/metricslog.h>
-#endif
-
 #ifdef CONFIG_ACCDET_USE_VCAMAF_POWER
 #if !defined(CONFIG_MTK_LEGACY)
 #include <linux/regulator/consumer.h>
@@ -37,12 +33,6 @@
 #define VOL_2800 2800000
 
 struct regulator *vcamaf_pwr;
-#endif
-
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#define METRICS_LOG_MAX_SIZE (512)
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-#define METRICS_LOG_MAX_SIZE (128)
 #endif
 
 #define DEBUG_THREAD 1
@@ -146,14 +136,6 @@ char *accdet_report_string[4] = {
 	/*"HEADSET_illegal",*/
 	/* "Double_check"*/
 };
-
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-static char *accdet_metrics_cable_string[3] = {
-	"NOTHING",
-	"HEADSET",
-	"HEADPHONES"
-};
-#endif
 
 /* export function */
 
@@ -315,9 +297,6 @@ static inline void headset_plug_out(void)
 #ifdef CONFIG_SND_HEADSET_TS3A225E
 	int result;
 #endif
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-#endif
 	send_accdet_status_event(cable_type, 0);
 
 	accdet_status = PLUG_OUT;
@@ -329,17 +308,6 @@ static inline void headset_plug_out(void)
 		ACCDET_DEBUG(" [accdet] headset_plug_out send key = %d release\n",cur_key);
 		cur_key = 0;
 	}
-
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-		"%s:%s:100:%s,UNPLUGGED=true;BO,PLUGGED=false;BO,CABLE=NONE;SY:us-east-1",
-		METRICS_HEADSET_GROUP_ID, METRICS_HEADSET_JACK_SCHEMA_ID, PREDEFINED_ESSENTIAL_KEY);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-	snprintf(metrics_log_buf, sizeof(metrics_log_buf),
-		"%s:jack:unplugged=1;CT;1:NR", __func__);
-	log_to_metrics(ANDROID_LOG_INFO, "AudioJackEvent", metrics_log_buf);
-#endif
-
 #ifdef CONFIG_SWITCH
 	switch_set_state((struct switch_dev *)&accdet_data, cable_type);
 #endif
@@ -979,59 +947,23 @@ static void send_accdet_status_event(int cable_type, int status)
 
 static void send_key_event(int keycode, int flag)
 {
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-	char *string = NULL;
-#endif
 	switch (keycode) {
 	case DW_KEY:
 		input_report_key(kpd_accdet_dev, KEY_VOLUMEDOWN, flag);
 		input_sync(kpd_accdet_dev);
 		ACCDET_DEBUG("[accdet]KEY_VOLUMEDOWN %d\n", flag);
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		string = "KEY_VOLUMEDOWN";
-#endif
 		break;
 	case UP_KEY:
 		input_report_key(kpd_accdet_dev, KEY_VOLUMEUP, flag);
 		input_sync(kpd_accdet_dev);
 		ACCDET_DEBUG("[accdet]KEY_VOLUMEUP %d\n", flag);
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		string = "KEY_VOLUMEUP";
-#endif
-		break;
-	case MD_KEY:
-		input_report_key(kpd_accdet_dev, KEY_PLAYPAUSE, flag);
-		input_sync(kpd_accdet_dev);
-		ACCDET_DEBUG("[accdet]KEY_PLAYPAUSE %d\n", flag);
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		string = "KEY_PLAYPAUSE";
-#endif
 		break;
 	case AS_KEY:
 		input_report_key(kpd_accdet_dev, KEY_VOICECOMMAND, flag);
 		input_sync(kpd_accdet_dev);
 		ACCDET_DEBUG("[accdet]KEY_VOICECOMMAND %d\n", flag);
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		string = "KEY_VOICECOMMAND";
-#endif
 		break;
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	default:
-		string = "NOKEY";
-#endif
 	}
-
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-		"%s:%s:100:%s,KEY=%s;SY,STATE=%d;IN:us-east-1", METRICS_HEADSET_GROUP_ID,
-		METRICS_HEADSET_KEY_SCHEMA_ID, PREDEFINED_ESSENTIAL_KEY, string, flag);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-	snprintf(metrics_log_buf, sizeof(metrics_log_buf),
-		"%s:jack:key=%s;DV;1,state=%d;CT;1:NR",
-		__func__, string, flag);
-	log_to_metrics(ANDROID_LOG_INFO, "AudioJackEvent", metrics_log_buf);
-#endif
 }
 
 static void multi_key_detection(int current_status)
@@ -1407,9 +1339,6 @@ ACCDET_DEBUG("[Accdet]check_cable_type: Clear interrupt:Done[0x%x]!\n",
 
 static void accdet_work_callback(struct work_struct *work)
 {
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-#endif
 	__pm_stay_awake(accdet_irq_lock);
 	check_cable_type();
 
@@ -1426,21 +1355,6 @@ static void accdet_work_callback(struct work_struct *work)
 	mutex_lock(&accdet_eint_irq_sync_mutex);
 	if (eint_accdet_sync_flag == 1) {
 		send_accdet_status_event(cable_type, 1);
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		if (pre_status == PLUG_OUT) {
-			minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-				"%s:%s:100:%s,UNPLUGGED=false;BO,PLUGGED=true;BO,CABLE=%s;SY:us-east-1",
-				METRICS_HEADSET_GROUP_ID, METRICS_HEADSET_JACK_SCHEMA_ID, PREDEFINED_ESSENTIAL_KEY,
-				accdet_metrics_cable_string[cable_type]);
-		}
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-		if (pre_status == PLUG_OUT) {
-			snprintf(metrics_log_buf, sizeof(metrics_log_buf),
-				"%s:jack:plugged=1;CT;1,state_%s=1;CT;1:NR",
-				__func__, accdet_metrics_cable_string[cable_type]);
-			log_to_metrics(ANDROID_LOG_INFO, "AudioJackEvent", metrics_log_buf);
-		}
-#endif
 #ifdef CONFIG_SWITCH
 		switch_set_state((struct switch_dev *)&accdet_data, cable_type);
 #endif

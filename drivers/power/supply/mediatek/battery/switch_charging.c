@@ -19,7 +19,6 @@
 #include <mt-plat/battery_meter.h>
 #include <mt-plat/charging.h>
 #include <mt-plat/mtk_boot.h>
-#include "battery_metrics.h"
 
 /* ============================================================ // */
 /* define */
@@ -647,8 +646,6 @@ static int ap15_charger_detection(void)
 					 &g_temp_CC_value);
 	}
 
-	bat_metrics_aicl(BMT_status.ap15_charger_detected,
-			BMT_status.aicl_result / 100);
 exit:
 	return 0;
 }

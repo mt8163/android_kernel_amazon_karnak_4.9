@@ -29,11 +29,6 @@
 #include <linux/of_irq.h>
 #endif
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#define METRICS_STR_LEN 128
-#endif
-
 #define DELAY_VALUE 50
 #define TIMEOUT_VALUE 100
 
@@ -99,9 +94,6 @@ static void remove_hall_proc_file(void)
 static void hall_work_func(struct work_struct *work)
 {
 	struct hall_priv *priv = container_of(work, struct hall_priv, work);
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char metrics_log[METRICS_STR_LEN];
-#endif
 	struct input_dev *input = priv->input;
 	unsigned long gpio_pin = priv->sensor_data[0].gpio_pin;
 
@@ -111,16 +103,6 @@ static void hall_work_func(struct work_struct *work)
 	msleep(DELAY_VALUE);
 	priv->sensor_data[0].gpio_state = gpio_get_value(gpio_pin);
 	priv->cover = priv->sensor_data[0].gpio_state ? COVER_OPENED : COVER_CLOSED;
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	/* Log in metrics */
-	//TODO DISPLAY is useless for hall sensor under current implementation
-	//Revise metrics format then stop logging fake display state.
-	snprintf(metrics_log, METRICS_STR_LEN, "bu520:TIMEOUT:COVER=%d;CT;1,DISPLAY=%d;CT;1:NR",
-		priv->cover, 0);
-	log_to_metrics(ANDROID_LOG_INFO, "HallSensor", metrics_log);
-#endif
-
 	input_report_switch(input, SW_LID, priv->sensor_data[0].gpio_state ? 0 : 1);
 	input_sync(input);
 }

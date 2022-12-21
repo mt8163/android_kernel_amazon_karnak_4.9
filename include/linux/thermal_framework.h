@@ -97,7 +97,4 @@ void thermal_parse_node_int(const struct device_node *np,
 			const char *node_name, int *cust_val);
 struct thermal_dev_params *thermal_sensor_dt_to_params(struct device *dev,
 			struct thermal_dev_params *params, struct thermal_dev_node_names *name_params);
-#ifdef CONFIG_THERMAL_SHUTDOWN_LAST_KMESG
-void last_kmsg_thermal_shutdown(void);
-#endif
 #endif /* __LINUX_THERMAL_FRAMEWORK_H__ */

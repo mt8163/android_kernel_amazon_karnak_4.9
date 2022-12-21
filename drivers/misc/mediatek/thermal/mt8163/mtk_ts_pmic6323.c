@@ -34,19 +34,6 @@
 #include "upmu_common.h"
 #include "mtk_ts_cpu.h"
 
-#ifdef CONFIG_THERMAL_SHUTDOWN_LAST_KMESG
-#include <linux/thermal_framework.h>
-#endif
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#define TSPMIC_METRICS_STR_LEN 128
-#endif
-
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
 
@@ -373,35 +360,8 @@ static int mtktspmic_get_crit_temp(struct thermal_zone_device *thermal,
 static int mtktspmic_thermal_notify(struct thermal_zone_device *thermal,
 				int trip, enum thermal_trip_type type)
 {
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[TSPMIC_METRICS_STR_LEN];
-#endif
 
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-	if (type == THERMAL_TRIP_CRITICAL) {
-		pr_err("[%s] Thermal shutdown PMIC, temp=%d, trip=%d\n",
-				__func__, thermal->temperature, trip);
-		life_cycle_set_thermal_shutdown_reason(THERMAL_SHUTDOWN_REASON_PMIC);
-	}
-#endif
-
-#ifdef CONFIG_THERMAL_SHUTDOWN_LAST_KMESG
-	if (type == THERMAL_TRIP_CRITICAL) {
-		pr_err("%s: thermal_shutdown notify\n", __func__);
-		last_kmsg_thermal_shutdown();
-		pr_err("%s: thermal_shutdown notify end\n", __func__);
-	}
-#endif
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	if (type == THERMAL_TRIP_CRITICAL &&
-		snprintf(buf, TSPMIC_METRICS_STR_LEN,
-			"%s:tspmicmonitor;CT;1,temp=%d;trip=%d;CT;1:NR",
-			PREFIX, thermal->temperature, trip) > 0)
-		log_to_metrics(ANDROID_LOG_INFO, "ThermalEvent", buf);
-
-#endif
-
+	pr_err("thermal_shutdown notify\n");
 	return 0;
 }
 
@@ -441,10 +401,6 @@ static int tspmic_sysrst_set_cur_state(struct thermal_cooling_device *cdev,
 		pr_err("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		pr_err("*****************************************");
 		pr_err("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-		life_cycle_set_thermal_shutdown_reason(THERMAL_SHUTDOWN_REASON_PMIC);
-#endif
 
 		/* BUG(); */
 		*(unsigned int *)0x0 = 0xdead;

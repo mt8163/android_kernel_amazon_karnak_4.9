@@ -34,9 +34,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#include <linux/metricslog.h> //-- add include file for metrics logging through logcat_vital
-#endif
 
 #include "rt551x-spi.h"
 #include "rt551x.h"
@@ -44,9 +41,6 @@
 #define SPI_READ_ALIGN_BYTE (1 << SHIFT_SPI_READ_ALIGN)
 #define SPI_READ_ALIGN_MASK  (~(SPI_READ_ALIGN_BYTE - 1))
 
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-#define METRICS_LOG_MAX_SIZE 512
-#endif
 static struct spi_device *rt551x_spi;
 static atomic_t need_reset_dsp_read_pointer;
 
@@ -125,31 +119,11 @@ static struct snd_soc_dai_driver rt551x_spi_dai = {
 
 static void send_dsp_reset_event(struct rt551x_dsp *rt551x_dsp) {
 	static char * reset_event[] = { "ACTION=DSP_RESET", NULL };
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-#endif
+
 	if (!rt551x_dsp->sending_crash_event) {
 		pr_err("%s -- send dsp reset uevent!\n", __func__);
 		kobject_uevent_env(&rt551x_dsp->dev->kobj, KOBJ_CHANGE, reset_event);
 		rt551x_reset_duetoSPI();
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		minerva_counter_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
-			VITALS_DSP_COUNTER_SCHEMA_ID, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_count", "DSP_Reset", 1, "count", NULL,
-			VITALS_NORMAL, NULL, NULL);
-
-		minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-			"%s:%s:100:%s,%s,%s,DSP_IRQ=false;BO,DSP_RESET=true;BO,"
-			"DSP_WDT=false;BO,DSP_DATA_PROCESS_BEGIN=false;BO:us-east-1",
-			METRICS_DSP_GROUP_ID, METRICS_DSP_VOICE_SCHEMA_ID,
-			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY,
-			PREDEFINED_DEVICE_LANGUAGE_KEY);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-		log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_count","DSP_Reset", 1, "count", NULL, VITALS_NORMAL);
-
-		log_to_metrics(ANDROID_LOG_INFO, "voice_dsp", "voice_dsp:def:DSP_Reset=1;CT;1:NR");
-#endif
 	}
 	rt551x_dsp->sending_crash_event = 1;
 }
@@ -232,9 +206,6 @@ static void rt551x_spi_copy_work(struct work_struct *work)
 	size_t period_bytes, truncated_bytes = 0;
 	int had_reset_read_pointer = 0;
 	size_t bufsize_avaldata = 0;
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	ktime_t Current;
-#endif
 	mutex_lock(&rt551x_dsp->dma_lock);
 
 	if (!rt551x_dsp->substream) {
@@ -323,63 +294,6 @@ static void rt551x_spi_copy_work(struct work_struct *work)
 		schedule_delayed_work(&rt551x_dsp->copy_work, msecs_to_jiffies(20));
 		if (rt551x_dsp->fgMetricLogPrint == false)
 		{
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-			rt551x_dsp->fgMetricLogPrint = true;
-			Current = ktime_get();
-#endif
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-			if (rt551x_dsp->dspStreamDuration >= MIN_SUSPEND_AUDIO_DURATION) {
-				char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-				minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-					"%s:%s:100:%s,%s,%s,DSP_DATA_CATCH_UP_FINISH=%d;IN,"
-					"DSP_DATA_PROCESS_FINISH=%d;IN,DSP_DATA_CANCEL=%d;IN:us-east-1",
-					METRICS_DSP_GROUP_ID, METRICS_DSP_CATCH_SCHEMA_ID,
-					PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY,
-					PREDEFINED_DEVICE_LANGUAGE_KEY,
-					ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime), -1, -1);
-
-				minerva_timer_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
-					VITALS_DSP_TIMER_SCHEMA_ID, "Kernel", "Kernel",
-					"RT551X_DSP_metrics_time", "DSP_DATA_CATCH_UP_FINISH",
-					ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime),
-					"ms", VITALS_NORMAL, NULL, NULL);
-			}
-			else {
-				char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-				minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-					"%s:%s:100:%s,%s,%s,DSP_DATA_CATCH_UP_FINISH=%d;IN,"
-					"DSP_DATA_PROCESS_FINISH=%d;IN,DSP_DATA_CANCEL=%d;IN:us-east-1",
-					METRICS_DSP_GROUP_ID, METRICS_DSP_CATCH_SCHEMA_ID,
-					PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY,
-					PREDEFINED_DEVICE_LANGUAGE_KEY,
-					-1, ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime), -1);
-
-				minerva_timer_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
-					VITALS_DSP_TIMER_SCHEMA_ID, "Kernel", "Kernel",
-					"RT551X_DSP_metrics_time", "DSP_DATA_PROCESS_FINISH",
-					ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime),
-					"ms", VITALS_NORMAL, NULL, NULL);
-			}
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-			if (rt551x_dsp->dspStreamDuration >= MIN_SUSPEND_AUDIO_DURATION) {
-				char buf[128];
-				snprintf(buf, sizeof(buf),
-					"voice_dsp:def:DSP_catchup_ms=%lld;TI;1:NR",
-					ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime));
-				log_to_metrics(ANDROID_LOG_INFO, "voice_dsp", buf);
-
-				log_timer_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
-					"RT551X_DSP_metrics_time","DSP_DATA_CATCH-UP_FINISH",
-					ktime_to_ms(Current)  - ktime_to_ms(rt551x_dsp->StreamOpenTime),
-					"ms", VITALS_NORMAL);
-
-			}
-			else
-				log_timer_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
-					"RT551X_DSP_metrics_time","DSP_DATA_PROCESS_FINISH",
-					ktime_to_ms(Current)  - ktime_to_ms(rt551x_dsp->StreamOpenTime),
-					"ms", VITALS_NORMAL);
-#endif
 		}
 	}
 done:
@@ -389,29 +303,12 @@ done:
 /* PCM for streaming audio from the DSP buffer */
 static int rt551x_spi_pcm_open(struct snd_pcm_substream *substream)
 {
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-#endif
 	snd_soc_set_runtime_hwparams(substream, &rt551x_spi_pcm_hardware);
 	if (rt551x_dsp_pointer)
 	{
 		rt551x_dsp_pointer->fgMetricLogPrint = false;
 		rt551x_dsp_pointer->StreamOpenTime = ktime_get();
 		rt551x_dsp_pointer->dspStreamDuration = 0;
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-			"%s:%s:100:%s,%s,%s,DSP_IRQ=false;BO,DSP_RESET=false;BO,"
-			"DSP_WDT=false;BO,DSP_DATA_PROCESS_BEGIN=true;BO:us-east-1",
-			METRICS_DSP_GROUP_ID, METRICS_DSP_VOICE_SCHEMA_ID,
-			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY);
-		minerva_counter_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
-			VITALS_DSP_COUNTER_SCHEMA_ID, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_count", "DSP_DATA_PROCESS_BEGIN", 1, "count",
-			NULL, VITALS_NORMAL, NULL, NULL);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-		log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_count","DSP_DATA_PROCESS_BEGIN", 1, "count", NULL, VITALS_NORMAL);
-#endif
 	}
 	return 0;
 }
@@ -437,15 +334,9 @@ static int rt551x_spi_hw_params(struct snd_pcm_substream *substream,
 
 static int rt551x_spi_hw_free(struct snd_pcm_substream *substream)
 {
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
-#endif
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct rt551x_dsp *rt551x_dsp =
-			snd_soc_platform_get_drvdata(rtd->platform);
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		ktime_t Current;
-#endif
+	snd_soc_platform_get_drvdata(rtd->platform);
 	mutex_lock(&rt551x_dsp->dma_lock);
 	rt551x_dsp->substream = NULL;
 	rt551x_dsp->buf_base = 0;
@@ -455,28 +346,6 @@ static int rt551x_spi_hw_free(struct snd_pcm_substream *substream)
 	if (rt551x_dsp->fgMetricLogPrint == false)
 	{
 		rt551x_dsp->fgMetricLogPrint = true;
-#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		Current = ktime_get();
-#endif
-#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
-		minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
-			"%s:%s:100:%s,%s,%s,DSP_DATA_CATCH_UP_FINISH=%d;IN,"
-			"DSP_DATA_PROCESS_FINISH=%d;IN,DSP_DATA_CANCEL=%d;IN:us-east-1",
-			METRICS_DSP_GROUP_ID, METRICS_DSP_CATCH_SCHEMA_ID,
-			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY,
-			-1, -1, ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime));
-
-		minerva_timer_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
-			VITALS_DSP_TIMER_SCHEMA_ID, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_time", "DSP_DATA_CANCEL",
-			ktime_to_ms(Current) - ktime_to_ms(rt551x_dsp->StreamOpenTime), "ms",
-			VITALS_NORMAL, NULL, NULL);
-#elif defined(CONFIG_AMAZON_METRICS_LOG)
-		log_timer_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
-			"RT551X_DSP_metrics_time","DSP_DATA_CANCEL",
-			ktime_to_ms(Current)  - ktime_to_ms(rt551x_dsp->StreamOpenTime),
-			"ms", VITALS_NORMAL);
-#endif
 	}
 
 	return snd_pcm_lib_free_vmalloc_buffer(substream);

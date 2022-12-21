@@ -29,7 +29,6 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include "thermal_core.h"
-#include "amazon_thermal_life_cycle_reasons.h"
 //#include "amazon_thermal_pm_helper.h"
 
 #define SUSPEND_COOLER "suspend_cooler"
@@ -198,7 +197,6 @@ static int amazon_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 			suspend_cooler_in_suspend_state = true;
 			tz = amazon_cooling_find_tz_in_state(cdev, state);
 			if (tz)
-				amazon_thermal_set_shutdown_reason(tz);
 			amazon_suspend_cooler_task =
 				kthread_create(amazon_suspend_cooler_kthread,
 					cdev, "amazon_suspend_cooler_kthread");

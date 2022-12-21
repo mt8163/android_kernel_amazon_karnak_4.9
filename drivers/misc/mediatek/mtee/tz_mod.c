@@ -52,10 +52,6 @@
 
 #include "tz_secure_clock.h"
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include  <linux/metricslog.h>
-#endif
-
 #define MTEE_MOD_TAG "MTEE_MOD"
 
 #define MAX_TAG_SIZE   32
@@ -1391,9 +1387,6 @@ int KREE_ServGetChunkmemPool(u32 op,
 	struct ree_service_chunk_mem *chunkmem;
 	s64 ms;
 	ktime_t before, after;
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[128];
-#endif
 
 	if (!tz_cma)
 		return TZ_RESULT_ERROR_OUT_OF_MEMORY;
@@ -1419,17 +1412,6 @@ int KREE_ServGetChunkmemPool(u32 op,
 	}
 	chunkmem->size = secure_size;
 	chunkmem->chunkmem_pa = (uint64_t)page_to_phys(secure_pages);
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	snprintf(buf, sizeof(buf),
-		"cma_alloc:def:cma_alloc_success=1;CT;1,cma_alloc_latency_ms=%lld;CT;1:NR",
-		ms + failms);
-	log_to_metrics(ANDROID_LOG_INFO, "cma_alloc", buf);
-	log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel", "cma_alloc",
-		"cma_alloc_latency_ms", (u32)(ms + failms), "count", NULL, VITALS_NORMAL);
-	log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel", "cma_alloc",
-		"cma_alloc_success", 1, "count", NULL, VITALS_NORMAL);
-#endif
 
 	pr_info("%s() get @%llx [0x%zx] takes %lld ms\n", __func__,
 			chunkmem->chunkmem_pa, secure_size, ms + failms);

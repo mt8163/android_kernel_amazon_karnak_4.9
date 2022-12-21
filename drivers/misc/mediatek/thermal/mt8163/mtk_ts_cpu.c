@@ -42,25 +42,12 @@
 
 #include "inc/mtk_ts_cpu.h"
 
-#ifdef CONFIG_THERMAL_SHUTDOWN_LAST_KMESG
-#include <linux/thermal_framework.h>
-#endif
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
-
 #ifdef CONFIG_OF
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #endif
 #define __MT_MTK_TS_CPU_C__
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#define TSCPU_METRICS_STR_LEN 128
-#endif
 
 #ifdef CONFIG_OF
 
@@ -2381,41 +2368,9 @@ static int tscpu_get_crit_temp(struct thermal_zone_device *thermal,
 	return 0;
 }
 
-#define PREFIX "thermaltscpu:def"
 static int tscpu_thermal_notify(struct thermal_zone_device *thermal,
 	int trip, enum thermal_trip_type type)
 {
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[TSCPU_METRICS_STR_LEN];
-#endif
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-	if (type == THERMAL_TRIP_CRITICAL) {
-		pr_err(
-			"[%s] Thermal shutdown CPU, temp=%d, trip=%d\n",
-			__func__, thermal->temperature, trip);
-		life_cycle_set_thermal_shutdown_reason(
-		THERMAL_SHUTDOWN_REASON_SOC);
-	}
-#endif
-
-#ifdef CONFIG_THERMAL_SHUTDOWN_LAST_KMESG
-	if (type == THERMAL_TRIP_CRITICAL) {
-		pr_err("%s: thermal_shutdown notify\n", __func__);
-		last_kmsg_thermal_shutdown();
-		pr_err("%s: thermal_shutdown notify end\n", __func__);
-	}
-#endif
-
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	if (type == THERMAL_TRIP_CRITICAL &&
-		snprintf(buf, TSCPU_METRICS_STR_LEN,
-			"%s:tscpumonitor=1;CT;1,temp=%d;CT;1,trip=%d;CT;1:NR",
-			PREFIX, thermal->temperature, trip) > 0)
-		log_to_metrics(ANDROID_LOG_INFO, "ThermalEvent", buf);
-
-#endif
-
 	return 0;
 }
 
@@ -2972,23 +2927,6 @@ static int dtm_cpu_set_cur_state(struct thermal_cooling_device *cdev,
 	unsigned long state)
 {
 	int i = 0;
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[TSCPU_METRICS_STR_LEN];
-#endif
-
-	/* tscpu_dprintk("dtm_cpu_set_cur_state %s\n", cdev->type); */
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	for (i = 0; i < Num_of_OPP; i++) {
-		if ((!strcmp(cdev->type, &cooler_name[i * 20])) &&
-			cl_dev_state[i] != state) {
-			if (snprintf(buf, TSCPU_METRICS_STR_LEN,
-				"%s:cpumonitor_%s_cooler_state=%ld;CT;1:NR",
-				PREFIX, cdev->type, state) > 0)
-			log_to_metrics(ANDROID_LOG_INFO, "ThermalEvent", buf);
-		}
-	}
-#endif
-
 	tscpu_printk("[%s]: CPU change state, cooler=%s, state=%ld\n",
 			__func__, cdev->type, state);
 	for (i = 0; i < Num_of_OPP; i++) {
@@ -3033,10 +2971,6 @@ static int sysrst_cpu_set_cur_state(struct thermal_cooling_device *cdev,
 		pr_err("*****************************************\n");
 		pr_err("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-		life_cycle_set_thermal_shutdown_reason(THERMAL_SHUTDOWN_REASON_SOC);
-#endif
-
 		/* To trigger data abort to reset the system
 		 *for thermal protection.
 		 */
@@ -3069,24 +3003,11 @@ static int adp_cpu_set_cur_state(struct thermal_cooling_device *cdev,
 	int ttj = 117000;
 
 	int cooler_index = (cdev->type[13] - '0');
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[TSCPU_METRICS_STR_LEN];
-#endif
-
 	if (cooler_index >= MAX_CPT_ADAPTIVE_COOLERS
 		|| cooler_index < 0) {
 		pr_err("%s: adaptive cooler index ERROR \n", __func__);
 		return -EINVAL;
 	}
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	if (cl_dev_adp_cpu_state[cooler_index] != state &&
-		snprintf(buf, TSCPU_METRICS_STR_LEN,
-			"%s:cpumonitor_%s_cooler_state=%ld;CT;1:NR",
-			PREFIX, cdev->type, state) > 0)
-		log_to_metrics(ANDROID_LOG_INFO, "ThermalEvent", buf);
-
-#endif
-
 	cl_dev_adp_cpu_state[cooler_index] = state;
 	/* TODO: no exit point can be obtained in mtk_ts_cpu.c */
 	ttj = decide_ttj();
