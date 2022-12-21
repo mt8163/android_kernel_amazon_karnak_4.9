@@ -26,10 +26,6 @@
 #include <linux/input/mt.h>
 #endif
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#endif
-
 static const char *goodix_ts_name = "goodix-ts";
 static const char *goodix_input_phys = "input/ts";
 static struct workqueue_struct *goodix_wq;
@@ -3415,10 +3411,6 @@ static void gtp_esd_check_func(struct work_struct *work)
 	s32 ret = -1;
 	struct goodix_ts_data *ts = NULL;
 	u8 esd_buf[5] = {0x80, 0x40};
-#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[128];
-#endif
-
 	GTP_DEBUG_FUNC();
 	ts = i2c_get_clientdata(i2c_connect_client);
 
@@ -3517,12 +3509,6 @@ static void gtp_esd_check_func(struct work_struct *work)
 			msleep(50);
 			gtp_send_cfg(ts->client);
 		}
-#ifdef CONFIG_AMAZON_METRICS_LOG
-		snprintf(buf, sizeof(buf),
-	"gt9xx:watchdog :read_failure=1;CT;1:NR");
-		log_to_metrics(ANDROID_LOG_INFO,
-		"TouchEvent", buf);
-#endif
 	}
 
 	if (!ts->gtp_is_suspend)

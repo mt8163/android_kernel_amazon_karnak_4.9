@@ -339,14 +339,6 @@ struct mmc_card {
 	struct dentry		*debugfs_root;
 	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
 	unsigned int    nr_parts;
-#ifdef CONFIG_AMAZON_METRICS_LOG                /* for attribute */
-	unsigned int minReservedBlocks;
-	unsigned int maxEraseCountMLC;
-	unsigned int avgEraseCountMLC;
-	unsigned int maxEraseCountSLC;
-	unsigned int avgEraseCountSLC;
-#endif /* CONFIG_AMAZON_METRICS_LOG */
-
 };
 
 /*

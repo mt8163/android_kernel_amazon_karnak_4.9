@@ -51,10 +51,6 @@
 
 #endif
 
-#if defined(CONFIG_MTEE_CMA_SECURE_MEMORY) && defined(CONFIG_AMAZON_METRICS_LOG)
-#include  <linux/metricslog.h>
-#endif
-
 #define ION_PRINT_LOG_OR_SEQ(seq_file, fmt, args...) \
 do {\
 	if (seq_file)\
@@ -179,16 +175,6 @@ static int ion_sec_heap_allocate(struct ion_heap *heap,
 				ion_session_handle(),
 				&sec_handle, align, size, heap->name);
 		if (ret != TZ_RESULT_SUCCESS) {
-		#if defined(CONFIG_MTEE_CMA_SECURE_MEMORY) && defined(CONFIG_AMAZON_METRICS_LOG)
-			if (flags & ION_FLAG_MM_HEAP_INIT_ZERO) {
-				char buf[128];
-				snprintf(buf, sizeof(buf),
-					"cma_alloc:def:cma_alloc_fail=1;CT;1:NR");
-				log_to_metrics(ANDROID_LOG_INFO, "cma_alloc", buf);
-				log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel", "cma_alloc",
-					"cma_alloc_fail", 1, "count", NULL, VITALS_NORMAL);
-			}
-		#endif
 			pr_err("KREE_AllocSecurechunkmemWithTag failed, ret is 0x%x\n",
 			       ret);
 			kfree(pbufferinfo);

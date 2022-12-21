@@ -31,9 +31,6 @@
 #include <asm/system_misc.h>
 #include <mmprofile.h>
 #include "../mrdump/mrdump_private.h"
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
 
 static bool ipanic_enable = 1;
 static spinlock_t ipanic_lock;
@@ -188,10 +185,6 @@ static int ipanic_die(struct notifier_block *self, unsigned long cmd, void *ptr)
 	dump_instr(KERN_EMERG, dargs->regs);
 #ifdef CONFIG_MTK_RAM_CONSOLE
 	aee_rr_rec_scp();
-#endif
-
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-	life_cycle_set_boot_reason(WARMBOOT_BY_KERNEL_PANIC);
 #endif
 
 #ifdef CONFIG_MTK_WQ_DEBUG

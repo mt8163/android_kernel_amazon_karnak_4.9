@@ -10,7 +10,6 @@
 #include <linux/of_fdt.h>
 #include <linux/vmalloc.h>
 #include <linux/power_supply.h>
-#include <linux/metricslog.h>
 #include <linux/notifier.h>
 #include <linux/suspend.h>
 #include <linux/delay.h>
@@ -134,9 +133,6 @@ void soc_corner_check(struct integrity_metrics_data *batt_data, int soc,
 			memset(g_metrics_buf, 0, BATTERY_METRICS_BUFF_SIZE);
 			snprintf(g_metrics_buf, sizeof(g_metrics_buf),
 				 SOC_CORNER_95_STRING, calc_above_95_time);
-			log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-				       INTEGRITY_BATTERY_MODULE,
-				       g_metrics_buf);
 		}
 	}
 
@@ -158,8 +154,6 @@ void soc_corner_check(struct integrity_metrics_data *batt_data, int soc,
 				 batt_data->low_batt_init_volt,
 				 batt_data->low_batt_init_soc,
 				 calc_below_15_time);
-			log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-				       INTEGRITY_BATTERY_MODULE, g_metrics_buf);
 		}
 	}
 
@@ -173,9 +167,6 @@ void soc_corner_check(struct integrity_metrics_data *batt_data, int soc,
 				 batt_data->low_batt_init_volt,
 				 batt_data->low_batt_init_soc,
 				 calc_below_15_time);
-			log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-				       INTEGRITY_BATTERY_MODULE,
-				       g_metrics_buf);
 		}
 	}
 }
@@ -222,8 +213,6 @@ void stress_pulse(struct integrity_metrics_data *batt_data,
 			 STRESS_PULSE_DEBUG_STRING,
 		stress_frame, stress_period, batt_volt_mv,
 		batt_temp, batt_data->stress_string, INTEGRITY_MODULE_VERSION);
-		log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-			       INTEGRITY_BATTERY_MODULE, g_metrics_buf);
 #endif
 
 	} else {
@@ -244,8 +233,6 @@ void stress_pulse(struct integrity_metrics_data *batt_data,
 		snprintf(g_metrics_buf, sizeof(g_metrics_buf),
 			 STRESS_REPORT_STRING, stress_period,
 			 batt_data->stress_string, INTEGRITY_MODULE_VERSION);
-		log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-			       INTEGRITY_BATTERY_MODULE, g_metrics_buf);
 
 		batt_data->stress_period = stress_period;
 		init_stress_metric(batt_data);
@@ -363,10 +350,6 @@ void push_integrity_batt_data(unsigned long elaps_sec, unsigned int batt_volt,
 				batt_data->fsoc,
 				batt_data->n_count,
 				INTEGRITY_MODULE_VERSION);
-
-			log_to_metrics(ANDROID_LOG_INFO_LOCAL,
-					INTEGRITY_BATTERY_MODULE,
-					g_metrics_buf);
 		}
 		init_integrity_batt_data(batt_data, batt_volt,
 					 vusb, soc, temp,
@@ -420,9 +403,6 @@ void push_integrity_batt_data(unsigned long elaps_sec, unsigned int batt_volt,
 		 elaps_sec_prev,
 		 delta_elaps_sec,
 		 calc_elaps_sec);
-
-	log_to_metrics(ANDROID_LOG_INFO_LOCAL, INTEGRITY_BATTERY_MODULE,
-		       g_metrics_buf);
 #endif
 
 	elaps_sec_prev = elaps_sec;

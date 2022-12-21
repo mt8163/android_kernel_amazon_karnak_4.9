@@ -64,6 +64,5 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/temperature/inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/hwmon/include
 
 obj-$(CONFIG_AMAZON_THERMAL) += amazon_virtual_sensor_thermal.o amazon_cooling.o
-obj-$(CONFIG_AMAZON_THERMAL) += amazon_thermal_life_cycle_reasons.o
 # TODO: Enable suspend/resume
 #obj-$(CONFIG_AMAZON_THERMAL) += amazon_thermal_pm_mt8163_helper.o

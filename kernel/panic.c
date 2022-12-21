@@ -25,9 +25,6 @@
 #include <linux/nmi.h>
 #include <linux/console.h>
 #include <linux/bug.h>
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-#include <linux/sign_of_life.h>
-#endif
 
 
 #define PANIC_TIMER_STEP 100
@@ -176,9 +173,6 @@ void panic(const char *fmt, ...)
 	va_end(args);
 	pr_emerg("Kernel panic - not syncing: %s\n", buf);
 
-#ifdef CONFIG_AMAZON_SIGN_OF_LIFE
-	life_cycle_set_boot_reason(WARMBOOT_BY_KERNEL_PANIC);
-#endif
 
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*

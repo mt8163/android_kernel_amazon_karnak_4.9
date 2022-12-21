@@ -53,7 +53,6 @@
 #include <mt-plat/battery_meter_hal.h>
 #include <mach/mtk_battery_meter.h>
 #include <mt-plat/upmu_common.h>
-#include "battery_metrics.h"
 
 #if defined(CONFIG_MTK_INTERNAL_CHARGER_SUPPORT)
 #include <mt-plat/internal_charging.h>
@@ -4308,8 +4307,6 @@ static int wifi_notifier_call(struct notifier_block *nb,
 				g_slp_current = batt_meter_cust_data.slp_current_wifi;
 			else
 				g_slp_current = batt_meter_cust_data.slp_current;
-
-			bat_metrics_slp_current(g_slp_current);
 			/* Get minimum time slice of sleep time for rounded error */
 			g_slp_time_min = (3600 / (g_slp_current * 10)) + 5;
 			pr_info("%s: is_carrier_ok=%d g_slp_current=%d g_slp_time_min=%d\n",
