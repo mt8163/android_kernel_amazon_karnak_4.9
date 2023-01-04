@@ -12,6 +12,4 @@
 #
 
 MTK_GPU_VERSION = $(subst ",,$(CONFIG_MTK_GPU_VERSION))
-$(info *MTK_GPU_VERSION 2 = $(word 2,$(MTK_GPU_VERSION)-$(word 3,$(MTK_GPU_VERSION))))
-
 obj-y += $(word 2,$(MTK_GPU_VERSION))-$(word 3,$(MTK_GPU_VERSION))/
