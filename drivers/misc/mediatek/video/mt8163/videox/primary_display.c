@@ -5724,10 +5724,10 @@ int primary_display_suspend(void)
 #else
 	DISPMSG("disable cascade before suspend!\n");
 	if (_is_decouple_mode(pgc->session_mode) == 0)
-		dpmgr_path_disable_cascade(pgc->dpmgr_handle, CMDQ_DISABLE);
+		dpmgr_path_disable_cascade(pgc->dpmgr_handle, NULL);
 	else
 		dpmgr_path_disable_cascade(pgc->ovl2mem_path_handle,
-					   CMDQ_DISABLE);
+					   NULL);
 
 	if (ovl_get_status() == DDP_OVL1_STATUS_SUB_REQUESTING) {
 		ovl_set_status(DDP_OVL1_STATUS_SUB);
@@ -5836,10 +5836,10 @@ int primary_display_resume(void)
 		DISPCHECK("[POWER]start cmdq[end]--IPOH\n");
 		if (_is_decouple_mode(pgc->session_mode) == 0)
 			dpmgr_path_enable_cascade(pgc->dpmgr_handle,
-						  CMDQ_DISABLE);
+						  NULL);
 		else
 			dpmgr_path_enable_cascade(pgc->ovl2mem_path_handle,
-						  CMDQ_DISABLE);
+						  NULL);
 		pgc->state = DISP_ALIVE;
 		goto done;
 	}
