@@ -1075,7 +1075,7 @@ extern unsigned long dsi_reg_va;
 #define REG_FLD_VAL_GET(field, regval)                                         \
 	(((regval)&REG_FLD_MASK(field)) >> REG_FLD_SHIFT(field))
 
-#define DISP_REG_GET(reg32) (*(/* volatile */ \
+#define DISP_REG_GET(reg32) (*(volatile \
 			unsigned int *)((unsigned long)reg32))
 #define DISP_REG_GET_FIELD(field, reg32)                                       \
 	((*(/* volatile */ unsigned int *)((unsigned long)reg32) &             \
