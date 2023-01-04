@@ -1126,18 +1126,18 @@ int ddp_dpi_config(enum DISP_MODULE_ENUM module,
 		pr_warn("DISP/DPI,ddp_dpi_config DPI status:%x, cmdq:%p\n",
 			INREG32(&DPI_REG[DPI_IDX(module)]->STATUS),
 			cmdq_handle);
-		ddp_dpi_ConfigCLK(module, cmdq_handle, dpi_config->clk_pol,
+		ddp_dpi_ConfigCLK(module, cmdq_handle,(unsigned long long int)dpi_config->clk_pol,
 				  dpi_config->lvds_tx_en);
 		ddp_dpi_ConfigSize(module, cmdq_handle, dpi_config->width,
 				   dpi_config->height);
 		ddp_dpi_ConfigBG(module, cmdq_handle, true,
 				 dpi_config->bg_width, dpi_config->bg_height);
-		ddp_dpi_ConfigDE(module, cmdq_handle, dpi_config->de_pol);
-		ddp_dpi_ConfigVsync(module, cmdq_handle, dpi_config->vsync_pol,
+		ddp_dpi_ConfigDE(module, cmdq_handle,(unsigned long long int)dpi_config->de_pol);
+		ddp_dpi_ConfigVsync(module, cmdq_handle, (unsigned long long int)dpi_config->vsync_pol,
 				    dpi_config->vsync_pulse_width,
 				    dpi_config->vsync_back_porch,
 				    dpi_config->vsync_front_porch);
-		ddp_dpi_ConfigHsync(module, cmdq_handle, dpi_config->hsync_pol,
+		ddp_dpi_ConfigHsync(module, cmdq_handle, (unsigned long long int)dpi_config->hsync_pol,
 				    dpi_config->hsync_pulse_width,
 				    dpi_config->hsync_back_porch,
 				    dpi_config->hsync_front_porch);
@@ -1148,7 +1148,7 @@ int ddp_dpi_config(enum DISP_MODULE_ENUM module,
 			LVDS_PLL_Init(module, NULL, dpi_config->PLL_CLOCK,
 				      dpi_config->ssc_range,
 				      dpi_config->ssc_disable);
-			ddp_dpi_ConfigCLK(module, NULL, dpi_config->clk_pol,
+			ddp_dpi_ConfigCLK(module, NULL, (unsigned long long int)dpi_config->clk_pol,
 					  dpi_config->lvds_tx_en);
 			if (dpi_config->lvds_tx_en)
 				ddp_dpi_lvds_config(module, dpi_config, NULL);
@@ -1162,8 +1162,8 @@ int ddp_dpi_config(enum DISP_MODULE_ENUM module,
 		}
 		if (module == DISP_MODULE_DPI1) {
 			ddp_dpi_ConfigPclk(module, cmdq_handle,
-					   dpi_config->dpi_clock,
-					   dpi_config->clk_pol);
+					   (unsigned long long int)dpi_config->dpi_clock,
+					   (unsigned long long int)dpi_config->clk_pol);
 			ddp_dpi_ConfigSize(
 				module, cmdq_handle, dpi_config->width,
 				Is_interlace_resolution(dpi_config->dpi_clock)
