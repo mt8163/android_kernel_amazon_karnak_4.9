@@ -47,8 +47,6 @@
 #include "display_recorder.h"
 #include "primary_display.h"
 
-#pragma GCC optimize("O0")
-
 #define ddp_aee_print(string, args...)                                         \
 	do {                                                                   \
 		char ddp_name[100];                                            \
