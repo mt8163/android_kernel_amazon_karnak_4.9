@@ -11,8 +11,6 @@
 # GNU General Public License for more details.
 #
 
-$(info mali MTK evironment)
-
 MTK_TOP = $(srctree)/drivers/misc/mediatek/
 
 #build support for a ARM Mali Midgard GPU
