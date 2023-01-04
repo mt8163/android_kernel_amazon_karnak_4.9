@@ -1,4 +1,3 @@
-$(info mali MTK evironment)
 
 MTK_TOP = $(srctree)/drivers/misc/mediatek/
 

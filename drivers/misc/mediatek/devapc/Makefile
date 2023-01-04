@@ -18,11 +18,6 @@ ifeq ($(TARGET_BUILD_VARIANT), eng)
 subdir-ccflags-y += -DDBG_ENABLE
 endif
 
-$(info PLATFORM = $(PLATFORM))
-
 ifneq ($(wildcard $(LOCAL_PATH)/$(PLATFORM)/Makefile),)
-   $(info DEVAPC platform code exists...)
-    obj-y += $(PLATFORM)/
-else
-   $(info DEVAPC platform code not exists...)
+obj-y += $(PLATFORM)/
 endif
