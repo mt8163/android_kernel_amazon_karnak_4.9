@@ -413,7 +413,7 @@ int dpmgr_path_is_idle(void *dp_handle);
  * io_evnet: not defined.
  * data    :  data.
  */
-int dpmgr_path_user_cmd(void *dp_handle, int msg, unsigned long arg,
+int dpmgr_path_user_cmd(void *dp_handle, unsigned int msg, unsigned long arg,
 			void *cmdqhandle);
 
 int dpmgr_path_set_parameter(void *dp_handle, int io_evnet, void *data);

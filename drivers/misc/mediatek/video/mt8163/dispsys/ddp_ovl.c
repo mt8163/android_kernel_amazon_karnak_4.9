@@ -1723,7 +1723,7 @@ int ovl_dump(enum DISP_MODULE_ENUM module, int level)
 	return 0;
 }
 
-static int ovl_io(enum DISP_MODULE_ENUM module, int msg, unsigned long arg,
+static int ovl_io(enum DISP_MODULE_ENUM module, unsigned int msg, unsigned long arg,
 		  void *cmdq)
 {
 	int ret = 0;

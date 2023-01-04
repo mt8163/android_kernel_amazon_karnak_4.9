@@ -161,7 +161,7 @@ disp_gamma_set_lut(const struct DISP_GAMMA_LUT_T __user *user_gamma_lut,
 	return ret;
 }
 
-static int disp_gamma_io(enum DISP_MODULE_ENUM module, int msg,
+static int disp_gamma_io(enum DISP_MODULE_ENUM module, unsigned int msg,
 			 unsigned long arg, void *cmdq)
 {
 	switch (msg) {
@@ -346,7 +346,7 @@ static int disp_ccorr_config(enum DISP_MODULE_ENUM module,
 	return 0;
 }
 
-static int disp_ccorr_io(enum DISP_MODULE_ENUM module, int msg,
+static int disp_ccorr_io(enum DISP_MODULE_ENUM module, unsigned int msg,
 			 unsigned long arg, void *cmdq)
 {
 	switch (msg) {

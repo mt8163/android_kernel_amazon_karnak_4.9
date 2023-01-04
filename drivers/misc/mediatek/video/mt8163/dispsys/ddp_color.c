@@ -1922,8 +1922,8 @@ static int _color_set_listener(enum DISP_MODULE_ENUM module,
 	return 0;
 }
 
-static int _color_io(enum DISP_MODULE_ENUM module, int msg, unsigned long arg,
-		     void *cmdq)
+static int _color_io(enum DISP_MODULE_ENUM module, unsigned int msg,
+				unsigned long arg, void *cmdq)
 {
 	int ret = 0;
 	int value = 0;
