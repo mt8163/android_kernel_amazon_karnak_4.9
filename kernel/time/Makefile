@@ -1,4 +1,3 @@
-ccflags-y += -Wno-error=maybe-uninitialized
 ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include
 obj-y += time.o timer.o hrtimer.o itimer.o posix-timers.o posix-cpu-timers.o
 obj-y += timekeeping.o ntp.o clocksource.o jiffies.o timer_list.o
