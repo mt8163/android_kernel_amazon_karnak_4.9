@@ -2597,11 +2597,6 @@ int get_bat_charging_current_level(void)
 
 unsigned int do_batt_temp_state_machine(void)
 {
-	if (BMT_status.temperature == batt_cust_data.err_charge_temperature)
-		return PMU_STATUS_FAIL;
-
-
-
 	if (batt_cust_data.bat_low_temp_protect_enable) {
 		if (BMT_status.temperature <
 			batt_cust_data.min_charge_temperature) {
@@ -2892,15 +2887,6 @@ static unsigned int mt_battery_CheckBatteryTemp(void)
 			status = PMU_STATUS_FAIL;
 		}
 	} else {
-#ifdef BAT_LOW_TEMP_PROTECT_ENABLE
-		if ((BMT_status.temperature <
-			batt_cust_data.min_charge_temperature)
-		    || (BMT_status.temperature == ERR_CHARGE_TEMPERATURE)) {
-			pr_notice(
-				    "[BATTERY] Battery Under Temperature or NTC fail !!\n\r");
-			status = PMU_STATUS_FAIL;
-		}
-#endif
 		if (BMT_status.temperature >=
 			batt_cust_data.max_charge_temperature) {
 			pr_notice("[BATTERY] Battery Over Temperature !!\n\r");
@@ -2965,19 +2951,6 @@ static unsigned int mt_battery_CheckChargingTime(void)
 
 }
 
-#if defined(STOP_CHARGING_IN_TAKLING)
-static unsigned int mt_battery_CheckCallState(void)
-{
-	unsigned int status = PMU_STATUS_OK;
-
-	if ((g_call_state == CALL_ACTIVE)
-	    && (BMT_status.bat_vol > batt_cust_data.v_cc2topoff_thres))
-		status = PMU_STATUS_FAIL;
-
-	return status;
-}
-#endif
-
 #if defined(CONFIG_MTK_MULTI_BAT_PROFILE_SUPPORT) && \
 	defined(MTK_GET_BATTERY_ID_BY_AUXADC)
 static unsigned int mt_battery_CheckBatteryConnect(void)
@@ -3020,12 +2993,6 @@ static void mt_battery_CheckBatteryStatus(void)
 		BMT_status.bat_charging_state = CHR_ERROR;
 		return;
 	}
-#if defined(STOP_CHARGING_IN_TAKLING)
-	if (mt_battery_CheckCallState() != PMU_STATUS_OK) {
-		BMT_status.bat_charging_state = CHR_HOLD;
-		return;
-	}
-#endif
 
 	if (mt_battery_CheckChargingTime() != PMU_STATUS_OK) {
 		BMT_status.bat_charging_state = CHR_ERROR;
@@ -4196,15 +4163,6 @@ static int __batt_init_cust_data_from_dt(void)
 		return -ENODEV;
 	}
 
-	__batt_parse_node(np, "stop_charging_in_takling",
-		&batt_cust_data.stop_charging_in_takling);
-
-	__batt_parse_node(np, "talking_recharge_voltage",
-		&batt_cust_data.talking_recharge_voltage);
-
-	__batt_parse_node(np, "talking_sync_time",
-		&batt_cust_data.talking_sync_time);
-
 	__batt_parse_node(np, "mtk_temperature_recharge_support",
 		&batt_cust_data.mtk_temperature_recharge_support);
 
@@ -4220,35 +4178,8 @@ static int __batt_init_cust_data_from_dt(void)
 	__batt_parse_node(np, "min_charge_temperature_plus_x_degree",
 		&batt_cust_data.min_charge_temperature_plus_x_degree);
 
-	__batt_parse_node(np, "err_charge_temperature",
-		&batt_cust_data.err_charge_temperature);
-
 	__batt_parse_node(np, "max_charging_time",
 		&batt_cust_data.max_charging_time);
-
-	__batt_parse_node(np, "v_pre2cc_thres",
-		&batt_cust_data.v_pre2cc_thres);
-
-	__batt_parse_node(np, "v_cc2topoff_thres",
-		&batt_cust_data.v_cc2topoff_thres);
-
-	__batt_parse_node(np, "recharging_voltage",
-		&batt_cust_data.recharging_voltage);
-
-	__batt_parse_node(np, "charging_full_current",
-		&batt_cust_data.charging_full_current);
-
-	__batt_parse_node(np, "config_usb_if",
-		&batt_cust_data.config_usb_if);
-
-	__batt_parse_node(np, "usb_charger_current_suspend",
-		&batt_cust_data.usb_charger_current_suspend);
-
-	__batt_parse_node(np, "usb_charger_current_unconfigured",
-		&batt_cust_data.usb_charger_current_unconfigured);
-
-	__batt_parse_node(np, "usb_charger_current_configured",
-		&batt_cust_data.usb_charger_current_configured);
 
 	__batt_parse_node(np, "usb_charger_current",
 		&batt_cust_data.usb_charger_current);
@@ -4277,9 +4208,6 @@ static int __batt_init_cust_data_from_dt(void)
 	__batt_parse_node(np, "apple_2_1a_charger_current",
 		&batt_cust_data.apple_2_1a_charger_current);
 
-	__batt_parse_node(np, "charge_current_termination",
-		&batt_cust_data.charge_current_termination);
-
 	__batt_parse_node(np, "bat_low_temp_protect_enable",
 		&batt_cust_data.bat_low_temp_protect_enable);
 
@@ -4303,9 +4231,6 @@ static int __batt_init_cust_data_from_dt(void)
 
 	__batt_parse_node(np, "v_0percent_tracking",
 		&batt_cust_data.v_0percent_tracking);
-
-	__batt_parse_node(np, "system_off_voltage",
-		&batt_cust_data.system_off_voltage);
 
 	__batt_parse_node(np, "high_battery_voltage_support",
 		&batt_cust_data.high_battery_voltage_support);
@@ -4340,35 +4265,8 @@ static int __batt_init_cust_data_from_dt(void)
 	__batt_parse_node(np, "jeita_neg_10_to_pos_0_full_current",
 		&batt_cust_data.jeita_neg_10_to_pos_0_full_current);
 
-	__batt_parse_node(np, "jeita_temp_pos_45_to_pos_60_recharge_voltage",
-		&batt_cust_data.jeita_temp_pos_45_to_pos_60_recharge_voltage);
-
-	__batt_parse_node(np, "jeita_temp_pos_10_to_pos_45_recharge_voltage",
-		&batt_cust_data.jeita_temp_pos_10_to_pos_45_recharge_voltage);
-
-	__batt_parse_node(np, "jeita_temp_pos_0_to_pos_10_recharge_voltage",
-		&batt_cust_data.jeita_temp_pos_0_to_pos_10_recharge_voltage);
-
-	__batt_parse_node(np, "jeita_temp_neg_10_to_pos_0_recharge_voltage",
-		&batt_cust_data.jeita_temp_neg_10_to_pos_0_recharge_voltage);
-
-	__batt_parse_node(np, "jeita_temp_pos_45_to_pos_60_cc2topoff_threshold",
-	&batt_cust_data.jeita_temp_pos_45_to_pos_60_cc2topoff_threshold);
-
-	__batt_parse_node(np, "jeita_temp_pos_10_to_pos_45_cc2topoff_threshold",
-	&batt_cust_data.jeita_temp_pos_10_to_pos_45_cc2topoff_threshold);
-
-	__batt_parse_node(np, "jeita_temp_pos_0_to_pos_10_cc2topoff_threshold",
-		&batt_cust_data.jeita_temp_pos_0_to_pos_10_cc2topoff_threshold);
-
-	__batt_parse_node(np, "jeita_temp_neg_10_to_pos_0_cc2topoff_threshold",
-		&batt_cust_data.jeita_temp_neg_10_to_pos_0_cc2topoff_threshold);
-
 	/* For fast charger detection */
 	__ap15_charger_detection_read_dt(np);
-
-	__batt_parse_node(np, "toggle_charge_enable",
-			&batt_cust_data.toggle_charge_enable);
 
 	of_node_put(np);
 	return 0;
@@ -4753,14 +4651,6 @@ static void battery_timer_resume(void)
 		pr_debug("battery resume NOT by pcm timer!!\n");
 	}
 
-	if (g_call_state == CALL_ACTIVE &&
-		(bat_time_after_sleep.tv_sec - g_bat_time_before_sleep.tv_sec
-		>= batt_cust_data.talking_sync_time)) {
-		/* phone call last than x min */
-		BMT_status.UI_SOC = battery_meter_get_battery_percentage();
-		pr_debug("Sync UI SOC to SOC immediately\n");
-	}
-
 	mutex_lock(&bat_mutex);
 
 	/* restore timer */
@@ -4995,14 +4885,13 @@ static int battery_dts_probe(struct platform_device *dev)
 {
 	int ret = 0;
 
-	pr_notice("******** battery_dts_probe!! ********\n");
+	pr_notice("******** %s!! ********\n", __func__);
 
 	battery_device.dev.of_node = dev->dev.of_node;
 	ret = platform_device_register(&battery_device);
 	if (ret) {
-		pr_notice(
-		    "****[battery_dts_probe] Unable to register device (%d)\n",
-			ret);
+		pr_notice("***[%s] Unable to register device (%d)\n",
+            __func__, ret);
 		return ret;
 	}
 	return 0;
@@ -5047,22 +4936,18 @@ static struct platform_driver mt_batteryNotify_driver = {
 static int mt_batteryNotify_dts_probe(struct platform_device *dev)
 {
 	int ret = 0;
-	/* struct proc_dir_entry *entry = NULL; */
 
-	pr_notice("******** mt_batteryNotify_dts_probe!! ********\n");
+	pr_notice("******** %s!! ********\n", __func__);
 
 	MT_batteryNotify_device.dev.of_node = dev->dev.of_node;
 	ret = platform_device_register(&MT_batteryNotify_device);
 	if (ret) {
-		pr_notice(
-			"****[mt_batteryNotify_dts] Unable to register device (%d)\n",
-			ret);
+		pr_notice("%s] Unable to register device (%d)\n", __func__, ret);
 		return ret;
 	}
+
 	return 0;
-
 }
-
 
 static struct platform_driver mt_batteryNotify_dts_driver = {
 	.probe = mt_batteryNotify_dts_probe,
