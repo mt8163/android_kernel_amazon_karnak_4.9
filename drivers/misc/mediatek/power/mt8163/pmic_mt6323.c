@@ -357,7 +357,7 @@ int PMIC_IMM_GetOneChannelValue(unsigned int dwChannel, int deCount,
 
 		/* Duo to HW limitation */
 		if (dwChannel != 8)
-			udelay(300);
+	    	usleep_range(300, 300);
 
 		count = 0;
 		ret_data = 0;
