@@ -1562,9 +1562,6 @@ static __latent_entropy struct task_struct *copy_process(
 			current->pid, current->comm, p);
 		goto fork_out;
 	}
-#ifdef CONFIG_CPU_FREQ_STAT
-	cpufreq_task_stats_init(p);
-#endif
 
 	cpufreq_task_times_init(p);
 
@@ -2012,7 +2009,6 @@ long _do_fork(unsigned long clone_flags,
 		struct completion vfork;
 		struct pid *pid;
 
-		cpufreq_task_times_alloc(p);
 
 		trace_sched_process_fork(current, p);
 
