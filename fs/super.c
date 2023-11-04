@@ -1018,12 +1018,6 @@ struct dentry *mount_ns(struct file_system_type *fs_type,
 		}
 
 		sb->s_flags |= MS_ACTIVE;
-	} else if (fill_super == &proc_fill_super) {
-		/* add /proc mount option "hidepid=2,gid" */
-		if (!proc_parse_options(data, ns)) {
-			printk(KERN_ERR
-				"mount_ns: unrecognized mount option %s value\n", data);
-		}
 	}
 
 	return dget(sb->s_root);
