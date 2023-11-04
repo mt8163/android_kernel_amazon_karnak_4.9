@@ -60,7 +60,7 @@ static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
 static unsigned int interval = 1;	/* seconds, 0 : no auto polling */
 static int trip_temp[10] = {
-150000, 110000, 100000, 90000, 80000, 70000, 65000, 60000, 55000, 50000 };
+58000, 110000, 100000, 90000, 80000, 70000, 65000, 60000, 55000, 50000 };
 /* static unsigned int cl_dev_dis_charge_state = 0; */
 static unsigned int cl_dev_sysrst_state;
 static struct thermal_zone_device *thz_dev;
@@ -68,7 +68,7 @@ static struct thermal_zone_device *thz_dev;
 static struct thermal_cooling_device *cl_dev_sysrst;
 static int mtktsbattery_debug_log;
 static int kernelmode;
-static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static int g_THERMAL_TRIP[10] = { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 static int num_trip = 1;
 static char g_bind0[20] = "mtk-cl-shutdown00";
@@ -183,10 +183,9 @@ int mtktsbattery_get_hw_temp(void)
 
 static int mtktsbattery_get_temp(struct thermal_zone_device *thermal, int *t)
 {
+	*t = mtktsbattery_get_hw_temp();
 	if((int)*t >= polling_trip_temp_high)
-		*t = battery_meter_get_battery_temperature();
-	else
-		*t = mtktsbattery_get_hw_temp();
+		*t = battery_meter_get_battery_temperature() * 1000;
 
 	if (*t >= polling_trip_temp1)
 		thermal->polling_delay = interval * 1000;

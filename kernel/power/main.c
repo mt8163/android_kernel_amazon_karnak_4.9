@@ -16,14 +16,24 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 #include <linux/metricslog.h>
 #endif
 
 #include "power.h"
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 struct delayed_work suspend_work;
+#endif
+
+#ifdef CONFIG_AMAZON_METRICS_LOG
+#define power_minerva_vitals(operation, key, value)	\
+	minerva_counter_to_vitals(ANDROID_LOG_INFO,		\
+		VITALS_POWER_GROUP_ID, VITALS_POWER_STATUS_SCHEMA_ID,	\
+		"suspend_event",				\
+		"suspend_event", operation, key,		\
+		value, "count", NULL, VITALS_NORMAL,		\
+		NULL, NULL);
 #endif
 
 DEFINE_MUTEX(pm_mutex);
@@ -645,10 +655,12 @@ static int __init pm_start_workqueue(void)
 	return pm_wq ? 0 : -ENOMEM;
 }
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 static void suspend_metrics_work(struct work_struct *work)
 {
+#ifdef CONFIG_AMAZON_METRICS_LOG
 	char buf[400] = {0};
+#endif
 	struct delayed_work *dw = container_of(work, struct delayed_work, work);
 	int last_dev, last_errno, last_step;
 	last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
@@ -658,6 +670,7 @@ static void suspend_metrics_work(struct work_struct *work)
 	last_step = suspend_stats.last_failed_step + REC_FAILED_NUM - 1;
 	last_step %= REC_FAILED_NUM;
 
+#ifdef CONFIG_AMAZON_METRICS_LOG
 	snprintf(buf, sizeof(buf),"suspend_event:def:success=%d;CT;1,fail=%d;CT;1,"
 		"failed_freeze=%d;CT;1,failed_prepare=%d;CT;1,failed_suspend=%d;CT;1,"
 		"failed_suspend_late=%d;CT;1,failed_suspend_noirq=%d;CT;1,"
@@ -672,6 +685,23 @@ static void suspend_metrics_work(struct work_struct *work)
 		suspend_stats.errno[last_errno], suspend_stats.failed_steps[last_step]);
 
 	log_to_metrics(ANDROID_LOG_INFO, "SuspendEvent", buf);
+#endif
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+	power_minerva_vitals("stats", "success", suspend_stats.success);
+	power_minerva_vitals("stats", "fail", suspend_stats.fail);
+	power_minerva_vitals("stats", "failed_freeze", suspend_stats.failed_freeze);
+	power_minerva_vitals("stats", "failed_prepare", suspend_stats.failed_prepare);
+	power_minerva_vitals("stats", "failed_suspend", suspend_stats.failed_suspend);
+	power_minerva_vitals("stats", "failed_suspend_late", suspend_stats.failed_suspend_late);
+	power_minerva_vitals("stats", "failed_suspend_noirq", suspend_stats.failed_suspend_noirq);
+	power_minerva_vitals("stats", "failed_resume", suspend_stats.failed_resume);
+	power_minerva_vitals("stats", "failed_resume_early", suspend_stats.failed_resume_early);
+	power_minerva_vitals("stats", "failed_resume_noirq", suspend_stats.failed_resume_noirq);
+	power_minerva_vitals("stats", "last_failed_errno", suspend_stats.errno[last_errno]);
+	power_minerva_vitals("stats", "last_failed_step", suspend_stats.failed_steps[last_step]);
+	power_minerva_vitals("last_failed", suspend_stats.failed_devs[last_dev], 1);
+#endif
 
 	schedule_delayed_work(dw, 12*3600*HZ);
 }
@@ -693,7 +723,7 @@ static int __init pm_init(void)
 		return error;
 	pm_print_times_init();
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	INIT_DELAYED_WORK(&suspend_work, suspend_metrics_work);
 	schedule_delayed_work(&suspend_work, 3600*HZ);
 #endif

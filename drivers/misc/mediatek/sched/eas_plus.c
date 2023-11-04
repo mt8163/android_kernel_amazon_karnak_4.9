@@ -244,11 +244,13 @@ static ssize_t show_eas_info_attr(struct kobject *kobj,
 	sched_max_util_task(&max_cpu, &max_pid, &max_util, &boost);
 #endif
 
+	rcu_read_lock();
 	task = find_task_by_vpid(max_pid);
 
 	len += snprintf(buf+len, max_len - len,
 		"\nheaviest task pid=%d (%s) util=%d boost=%d run in cpu%d\n\n",
 		max_pid, (task)?task->comm:"NULL", max_util, boost, max_cpu);
+	rcu_read_unlock();
 
 	len += snprintf(buf+len, max_len - len,
 			"foreground boost=%d\n", group_boost_read(1));

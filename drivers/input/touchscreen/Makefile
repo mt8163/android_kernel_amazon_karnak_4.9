@@ -101,3 +101,4 @@ obj-$(CONFIG_TOUCHSCREEN_ZFORCE)	+= zforce_ts.o
 obj-$(CONFIG_TOUCHSCREEN_COLIBRI_VF50)	+= colibri-vf50-ts.o
 obj-$(CONFIG_TOUCHSCREEN_ROHM_BU21023)	+= rohm_bu21023.o
 obj-$(CONFIG_TOUCHSCREEN_GTP9XX)	+= mediatek/gt9xx/
+obj-$(CONFIG_TOUCHSCREEN_GTP9110)	+= mediatek/gt9110/

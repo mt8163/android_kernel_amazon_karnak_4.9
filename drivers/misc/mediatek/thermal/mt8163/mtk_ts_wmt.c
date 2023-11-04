@@ -116,11 +116,11 @@ static struct task_struct g_task;
 static struct task_struct *pg_task = &g_task;
 
 /* +Cooler info+ */
-static int g_num_trip = COOLER_THRO_NUM + 1;
-static char g_bind0[20] = "mtktswmt-pa1";
-static char g_bind1[20] = "mtktswmt-pa2";
+static int g_num_trip = 2;
+static char g_bind0[20] = "mtktswmt-sysrst";
+static char g_bind1[20] = "mtk-cl-kshutdown00";
 static char g_bind2[20] = "mtktswmt-pa3";
-static char g_bind3[20] = "mtktswmt-sysrst";
+static char g_bind3[20] = "mtktswmt-pa2";
 static char g_bind4[20] = { 0 };
 static char g_bind5[20] = { 0 };
 static char g_bind6[20] = { 0 };
@@ -145,14 +145,14 @@ static unsigned int cl_pa1_dev_state;
 static unsigned int cl_pa2_dev_state;
 /*static unsigned int cl_pa3_dev_state =0;*/
 static unsigned int g_trip_temp[COOLER_NUM] = {
-	85000, 85000, 85000, 85000, 0, 0, 0, 0, 0, 0 };
+	120000, 118000, 85000, 85000, 0, 0, 0, 0, 0, 0 };
 
 /*static int g_thro[COOLER_THRO_NUM] = {
  * 10 * ONE_MBITS_PER_SEC, 5 * ONE_MBITS_PER_SEC,
  * 1 * ONE_MBITS_PER_SEC};
  */
 static int g_thermal_trip[COOLER_NUM] = {
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	0, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 /* -Cooler info- */
 
@@ -1507,7 +1507,7 @@ static int wmt_tm_proc_unregister(void)
 
 static int wmt_tm_thz_cl_register(void)
 {
-#define DEFAULT_POLL_TIME 0	/*Default disable, turn on by thermal policy */
+#define DEFAULT_POLL_TIME 1000	/*Default disable, turn on by thermal policy */
 
 	struct linux_thermal_ctrl_if *p_linux_if = 0;
 

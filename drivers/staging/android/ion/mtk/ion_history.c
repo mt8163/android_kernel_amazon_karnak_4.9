@@ -426,6 +426,7 @@ static int string_hash_put(struct string_struct *string)
 	if (!string->ref) {
 		hlist_del(&string->list);
 		kfree(string);
+		string = NULL;
 	}
 
 	spin_unlock(&ion_str_hash_lock);
@@ -621,8 +622,12 @@ static int ion_history_record(void *data)
 				continue;
 
 			if (g_client_history) {
+				int ret;
 				/* record page pool info */
+				ret =
 				ion_mm_heap_for_each_pool(write_mm_page_pool);
+				if (ret < 0)
+					break;
 
 				if (total_orphaned_size)
 					ion_client_write_record

@@ -1132,6 +1132,24 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(NT35521_WXGA_DSI_VDO_KARNAK)
 	&nt35521_wxga_dsi_vdo_karnak_kd_lcm_drv,
 #endif
+
+#if defined(JD936X_WXGA_DSI_VDO_KAYAK)
+	&jd9366_wxga_dsi_vdo_kayak_fiti_tpv_lcm_drv,
+	&jd9367_wxga_dsi_vdo_kayak_fiti_kd_lcm_drv,
+	&jd9365_wxga_dsi_vdo_kayak_fiti_kd_hsd_lcm_drv,
+	&jd9367_wxga_dsi_vdo_kayak_fiti_inx_lcm_drv,
+	&jd9366_wxga_dsi_vdo_kayak_fiti_starry_lcm_drv,
+	&jd9365d_wxga_dsi_vdo_kayak_fiti_tah_kd_lcm_drv,
+#endif
+
+#if defined(ILI9881C_WXGA_DSI_VDO_KAYAK)
+	&ili9881c_wxga_dsi_vdo_kayak_ili_kd_hsd_lcm_drv,
+#endif
+
+#if defined(NT35521_WXGA_DSI_VDO_KAYAK)
+	&nt35521_wxga_dsi_vdo_kayak_kd_lcm_drv,
+#endif
+
 };
 
 unsigned char lcm_name_list[][128] = {

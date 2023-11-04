@@ -188,7 +188,7 @@
 		select_device = <1>;
 	};
 	/* Virtual sensor thermistor */
-	thermistor@00 {
+	thermistor0@0 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <10000>;
 		thermal_thermistor,offset_invert = <0>;
@@ -197,7 +197,7 @@
 		aux_channel_num = <0>;
 		select_device = <0>;
 	};
-	thermistor@01 {
+	thermistor0@1 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <1000>;
 		thermal_thermistor,offset_invert = <0>;
@@ -206,7 +206,7 @@
 		aux_channel_num = <0>;
 		select_device = <1>;
 	};
-	thermistor@10 {
+	thermistor1@0 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <0>;
 		thermal_thermistor,offset_invert = <0>;
@@ -215,7 +215,7 @@
 		aux_channel_num = <1>;
 		select_device = <0>;
 	};
-	thermistor@11 {
+	thermistor1@1 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <5000>;
 		thermal_thermistor,offset_invert = <0>;
@@ -224,7 +224,7 @@
 		aux_channel_num = <1>;
 		select_device = <1>;
 	};
-	thermistor@20 {
+	thermistor2@0 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <4000>;
 		thermal_thermistor,offset_invert = <0>;
@@ -233,7 +233,7 @@
 		aux_channel_num = <2>;
 		select_device = <0>;
 	};
-	thermistor@21 {
+	thermistor2@1 {
 		compatible = "amazon,virtual_sensor_thermistor";
 		thermal_thermistor,offset = <1000>;
 		thermal_thermistor,offset_invert = <1>;

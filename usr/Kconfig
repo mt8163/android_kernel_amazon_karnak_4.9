@@ -56,7 +56,7 @@ config RD_GZIP
 
 config RD_BZIP2
 	bool "Support initial ramdisks compressed using bzip2"
-	default y
+	default n
 	depends on BLK_DEV_INITRD
 	select DECOMPRESS_BZIP2
 	help
@@ -65,7 +65,7 @@ config RD_BZIP2
 
 config RD_LZMA
 	bool "Support initial ramdisks compressed using LZMA"
-	default y
+	default n
 	depends on BLK_DEV_INITRD
 	select DECOMPRESS_LZMA
 	help

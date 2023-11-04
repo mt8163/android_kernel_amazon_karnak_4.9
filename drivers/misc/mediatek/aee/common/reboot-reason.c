@@ -113,12 +113,13 @@ static ssize_t powerup_reason_show(struct kobject *kobj,
 		br_ptr_e = strstr(br_ptr, " ");
 		/* get boot reason */
 		if (br_ptr_e != 0) {
-			strncpy(boot_reason, br_ptr + 23,
+			if(br_ptr_e - br_ptr - 23 > 0) {
+				strncpy(boot_reason, br_ptr + 23,
 					br_ptr_e - br_ptr - 23);
-			if(br_ptr_e - br_ptr - 23 < 0)
-				boot_reason[0] = '\0';
-			else
 				boot_reason[br_ptr_e - br_ptr - 23] = '\0';
+			}
+			else
+				boot_reason[0] = '\0';
 		}
 #ifdef CONFIG_MTK_RAM_CONSOLE
 		if (aee_rr_last_fiq_step() != 0)

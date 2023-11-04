@@ -39,7 +39,7 @@
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/slot-gpio.h>
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 #include <linux/metricslog.h>
 #endif
 
@@ -283,8 +283,10 @@
 #define CMD_TIMEOUT         (HZ/10 * 5)	/* 100ms x5 */
 #define DAT_TIMEOUT         (HZ    * 10)	/* 1000ms x5 */
 #ifdef CONFIG_AMAZON_METRICS_LOG
-#define METRICS_DELAY       HZ
 #define SDCARD_HOST_NAME	"mmc1"
+#endif
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#define METRICS_DELAY       HZ
 #endif
 
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
@@ -427,7 +429,7 @@ struct msdc_host {
 	u32 pc_suspend;	/* suspend/resume count */
 	u32 cmd19_fail; /* cmd19 tune failed count */
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	struct delayed_work metrics_work;
 	bool metrics_enable;
 	u32 crc_count_p;	/* reported crc count */
@@ -461,6 +463,20 @@ struct msdc_host {
 				((host->mmc) && (host->mmc->caps & MMC_CAP_SD_HIGHSPEED)) ? "SD" : "EMMC", \
 				#name, value - value##_p, "count", NULL, VITALS_NORMAL); \
 			value##_p = value; \
+		} \
+	} while (0)
+#endif
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+#define MSDC_MINERVA_COUNTER_TO_VITALS(name, value) \
+	do { \
+		if (value != value##_p) { \
+			minerva_counter_to_vitals(ANDROID_LOG_INFO, \
+				VITALS_EMMC_GROUP_ID, VITALS_EMMC_SCHEMA_ID, \
+				"Kernel", "msdc_state", \
+				((host->mmc) && (host->mmc->caps & MMC_CAP_SD_HIGHSPEED)) ? "SD" : "EMMC", \
+				#name, value - value##_p, "count", NULL, VITALS_NORMAL, NULL, NULL); \
+				value##_p = value; \
 		} \
 	} while (0)
 #endif
@@ -538,7 +554,23 @@ static void msdc_remove_device_attrs(struct msdc_host *host, struct device_attri
 		device_remove_file(host->dev, attrs[i]);
 }
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+static void msdc_metrics_work(struct work_struct *work)
+{
+	struct msdc_host *host = container_of(work, struct msdc_host, metrics_work.work);
+
+	MSDC_MINERVA_COUNTER_TO_VITALS(crc, host->crc_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(crc_invalid, host->crc_invalid_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(req, host->req_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(datato, host->datatimeout_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(cmdto, host->cmdtimeout_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(reqto, host->reqtimeout_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(pc_count, host->pc_count);
+	MSDC_MINERVA_COUNTER_TO_VITALS(pc_suspend, host->pc_suspend);
+	MSDC_MINERVA_COUNTER_TO_VITALS(cmd19_fail, host->cmd19_fail);
+	MSDC_MINERVA_COUNTER_TO_VITALS(inserted, host->inserted);
+}
+#elif defined(CONFIG_AMAZON_METRICS_LOG)
 static void msdc_metrics_work(struct work_struct *work)
 {
 	struct msdc_host *host = container_of(work, struct msdc_host, metrics_work.work);
@@ -1188,7 +1220,7 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 				BUG();
 			}
 		}
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 		if (host->metrics_enable)
 			mod_delayed_work(system_wq, &host->metrics_work, METRICS_DELAY);
 #endif
@@ -1494,7 +1526,7 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 				else
 					host->crc_count++;
 			}
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 			if (host->metrics_enable)
 				mod_delayed_work(system_wq, &host->metrics_work, METRICS_DELAY);
 #endif
@@ -1831,7 +1863,7 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			regulator_disable(mmc->supply.vqmmc);
 			host->vqmmc_enabled = false;
 			host->pc_count++;
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 			if (host->metrics_enable)
 				mod_delayed_work(system_wq, &host->metrics_work, METRICS_DELAY);
 #endif
@@ -2283,7 +2315,7 @@ static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			dev_err(host->dev, "Tune data fail!\n");
 		if (ret) {
 			host->cmd19_fail++;
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 			if (host->metrics_enable)
 				mod_delayed_work(system_wq, &host->metrics_work, METRICS_DELAY);
 #endif
@@ -2320,7 +2352,7 @@ static void msdc_hw_reset(struct mmc_host *mmc)
 	sdr_clr_bits(host->base + EMMC_IOCON, 1);
 }
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 static void msdc_cd_irq(struct mmc_host *mmc)
 {
 	struct msdc_host *host = mmc_priv(mmc);
@@ -2343,7 +2375,7 @@ static const struct mmc_host_ops mt_msdc_ops = {
 	.execute_tuning = msdc_execute_tuning,
 	.prepare_hs400_tuning = msdc_prepare_hs400_tuning,
 	.hw_reset = msdc_hw_reset,
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	.cd_irq = msdc_cd_irq,
 #endif
 };
@@ -2501,7 +2533,7 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	msdc_init_gpd_bd(host, &host->dma);
 	INIT_DELAYED_WORK(&host->req_timeout, msdc_request_timeout);
 	spin_lock_init(&host->lock);
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	host->metrics_enable = true;
 	INIT_DELAYED_WORK(&host->metrics_work, msdc_metrics_work);
 #endif

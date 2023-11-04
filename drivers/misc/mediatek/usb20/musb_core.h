@@ -391,6 +391,10 @@ struct musb {
 #ifdef CONFIG_MTK_MUSB_CARPLAY_SUPPORT
 	struct delayed_work carplay_work;
 #endif
+#ifdef CONFIG_POGO_PIN_DOCK
+	struct delayed_work dock_det_work;
+	struct delayed_work dock_vbat_ocp_work;
+#endif
 	struct musb_fifo_cfg *fifo_cfg;
 	unsigned int fifo_cfg_size;
 	struct musb_fifo_cfg *fifo_cfg_host;
@@ -552,7 +556,7 @@ struct musb {
 	struct dual_role_phy_instance *dr_usb;
 #endif /* CONFIG_DUAL_ROLE_USB_INTF */
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	int dock_state;
 	struct power_supply *batt_psy;
 #endif

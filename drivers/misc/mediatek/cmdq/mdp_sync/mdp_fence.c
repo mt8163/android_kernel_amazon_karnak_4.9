@@ -180,17 +180,14 @@ static void timeline_fence_release(struct fence *fence)
 {
 	struct sync_pt *pt = fence_to_sync_pt(fence);
 	struct sync_timeline *parent = fence_parent(fence);
+	unsigned long flags;
 
-	if (!list_empty(&pt->link)) {
-		unsigned long flags;
-
-		spin_lock_irqsave(fence->lock, flags);
-		if (!list_empty(&pt->link)) {
-			list_del(&pt->link);
-			rb_erase(&pt->node, &parent->pt_tree);
-		}
-		spin_unlock_irqrestore(fence->lock, flags);
+	spin_lock_irqsave(fence->lock, flags);
+	if (pt && !list_empty(&pt->link)) {
+		list_del(&pt->link);
+		rb_erase(&pt->node, &parent->pt_tree);
 	}
+	spin_unlock_irqrestore(fence->lock, flags);
 
 	sync_timeline_put(parent);
 	fence_free(fence);

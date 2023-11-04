@@ -134,7 +134,7 @@ static int mtk_disp_mgr_mmap(struct file *file, struct vm_area_struct *vma)
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-	if (require_size > size || (pa_start < addr_min || pa_end > addr_max)) {
+	if (require_size > size || (pa_start < addr_min || pa_end > addr_max || pa_start > pa_end)) {
 		DISPERR("mmap size range over flow!!\n");
 		return -EAGAIN;
 	}
@@ -2520,6 +2520,8 @@ const char *_session_ioctl_spy(unsigned int cmd)
 		return "DISP_IOCTL_SET_GAMMALUT";
 	case DISP_IOCTL_SET_CCORR:
 		return "DISP_IOCTL_SET_CCORR";
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
+		return "DISP_IOCTL_SUPPORT_COLOR_TRANSFORM";
 	case DISP_IOCTL_SET_PQPARAM:
 		return "DISP_IOCTL_SET_PQPARAM";
 	case DISP_IOCTL_GET_PQPARAM:
@@ -2617,6 +2619,7 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case DISP_IOCTL_AAL_GET_HIST:
 	case DISP_IOCTL_AAL_INIT_REG:
 	case DISP_IOCTL_AAL_SET_PARAM:
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
 	case DISP_IOCTL_SET_GAMMALUT:
 	case DISP_IOCTL_SET_CCORR:
 	case DISP_IOCTL_SET_PQPARAM:
@@ -2721,6 +2724,7 @@ static long mtk_disp_mgr_compat_ioctl(struct file *file, unsigned int cmd,
 	}
 	case DISP_IOCTL_SET_GAMMALUT:
 	case DISP_IOCTL_SET_CCORR:
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
 	case DISP_IOCTL_SET_PQPARAM:
 	case DISP_IOCTL_GET_PQPARAM:
 	case DISP_IOCTL_SET_PQINDEX:

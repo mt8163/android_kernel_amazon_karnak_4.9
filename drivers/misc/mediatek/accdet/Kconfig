@@ -19,12 +19,12 @@ config MTK_ACCDET_PMIC_CHIP_MT6323
 	  If unsure, say N.
 
 config MTK_AMZN_ACCDET
-	tristate "abc123/abh123/rbc123/abc123 ACCDET driver"
+	tristate "sbc123/abh123/abe123/abc123 ACCDET driver"
 	---help---
 
-	ACCDET driver support for abh123, abc123, rbc123 and abc123 with MTK SOC
+	ACCDET driver support for abh123, sbc123, abe123 and abc123 with MTK SOC
 
-	If you want to use abh123, abc123, rbc123 and abc123 ACCDET driver,
+	If you want to use abh123, sbc123, abe123 and abc123 ACCDET driver,
 	say Y or M here.
 
 	If unsure, say N.

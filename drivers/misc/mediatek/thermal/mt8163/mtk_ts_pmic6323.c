@@ -52,7 +52,7 @@ static kgid_t gid = KGIDT_INIT(1000);
 
 static unsigned int interval = 1;	/* seconds, 0 : no auto polling */
 static unsigned int trip_temp[10] = {
-	150000, 110000, 100000, 90000, 80000, 70000, 65000, 60000, 55000, 50000
+	145000, 143000, 100000, 90000, 80000, 70000, 65000, 60000, 55000, 50000
 };
 
 static unsigned int cl_dev_sysrst_state;
@@ -62,11 +62,11 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 static int mtktspmic_debug_log;
 static int kernelmode;
 
-static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static int g_THERMAL_TRIP[10] = { 0, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-static int num_trip = 1;
-static char g_bind0[20] = "mtk-cl-shutdown00";
-static char g_bind1[20] = { 0 };
+static int num_trip = 2;
+static char g_bind0[20] = "mtktspmic-sysrst";
+static char g_bind1[20] = "mtk-cl-kshutdown00";
 static char g_bind2[20] = { 0 };
 static char g_bind3[20] = { 0 };
 static char g_bind4[20] = { 0 };

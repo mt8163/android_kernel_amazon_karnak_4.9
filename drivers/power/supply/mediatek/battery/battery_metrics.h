@@ -1,7 +1,7 @@
 #ifndef _BATTERY_METRICS_H
 #define _BATTERY_METRICS_H
 
-#if defined(CONFIG_AMAZON_METRICS_LOG)
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG) || defined(CONFIG_AMAZON_METRICS_LOG)
 int bat_metrics_slp_current(u32 ma);
 int bat_metrics_aicl(bool is_detected, u32 aicl_result);
 int bat_metrics_vbus(bool is_on);

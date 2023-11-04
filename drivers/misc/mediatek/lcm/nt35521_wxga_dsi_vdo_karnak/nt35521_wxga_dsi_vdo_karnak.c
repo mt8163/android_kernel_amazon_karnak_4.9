@@ -207,10 +207,6 @@ MODULE_LICENSE("GPL");
 
 #endif
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include <linux/metricslog.h>
-#endif
-
 /* ---------------------------------------------------
  *  Local Constants
  * ---------------------------------------------------
@@ -1089,12 +1085,22 @@ static void lcm_init(void)
 static void lcm_suspend(void)
 {
 	unsigned int data_array[16];
-	#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[128];
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+	char buf[METRICS_STR_LEN]= {0};
+#endif
 
+#ifdef CONFIG_AMAZON_METRICS_LOG
 	snprintf(buf, sizeof(buf), "%s:lcd:suspend=1;CT;1:NR", __func__);
 	log_to_metrics(ANDROID_LOG_INFO, "LCDEvent", buf);
-	#endif
+#endif
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+	minerva_metrics_log(buf, METRICS_STR_LEN,
+			"%s:%s:100:%s,%s,%s,%s,lcm_state=lcm_suspend;SY,ESD_Recovery=0;IN:us-east-1",
+			METRICS_LCD_GROUP_ID, METRICS_LCD_SCHEMA_ID,
+			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_MODEL_KEY,
+			PREDEFINED_TZ_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY);
+#endif
 
 	#ifdef BUILD_LK
 		dprintf(INFO, "[LK/LCM] %s\n", __func__);
@@ -1113,12 +1119,22 @@ static void lcm_suspend(void)
 
 static void lcm_resume(void)
 {
-	#ifdef CONFIG_AMAZON_METRICS_LOG
-	char buf[128];
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+	char buf[METRICS_STR_LEN] = {0};
+#endif
 
+#ifdef CONFIG_AMAZON_METRICS_LOG
 	snprintf(buf, sizeof(buf), "%s:lcd:resume=1;CT;1:NR", __func__);
 	log_to_metrics(ANDROID_LOG_INFO, "LCDEvent", buf);
-	#endif
+#endif
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+	minerva_metrics_log(buf, METRICS_STR_LEN,
+			"%s:%s:100:%s,%s,%s,%s,lcm_state=lcm_resume;SY,ESD_Recovery=0;IN:us-east-1",
+			METRICS_LCD_GROUP_ID, METRICS_LCD_SCHEMA_ID,
+			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_MODEL_KEY,
+			PREDEFINED_TZ_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY);
+#endif
 
 	#ifdef BUILD_LK
 	dprintf(INFO, "[LK/LCM] %s\n", __func__);

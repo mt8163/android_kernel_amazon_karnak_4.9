@@ -29,8 +29,13 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 #include <linux/metricslog.h>
+#define METRICS_STR_LEN 1024
+#endif
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+#define INPUT_MINERVA_FMT "%s:%s:100:%s,%s,%s,%s,%s,%s,%s,key_power=%d;IN,key_volup=%d;IN,key_voldown=%d;IN,touch_tap=%d;IN,esd_recovery=0;IN:us-east-1"
 #endif
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
@@ -44,10 +49,11 @@ static DEFINE_IDA(input_ida);
 static LIST_HEAD(input_dev_list);
 static LIST_HEAD(input_handler_list);
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-static atomic_t vol_up_counter;
-static atomic_t vol_down_counter;
-static atomic_t touch_tap_counter;
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+static atomic_t pwrkey_counter = ATOMIC_INIT(0);
+static atomic_t vol_up_counter = ATOMIC_INIT(0);
+static atomic_t vol_down_counter = ATOMIC_INIT(0);
+static atomic_t touch_tap_counter = ATOMIC_INIT(0);
 struct delayed_work metrics_work;
 #endif
 
@@ -446,8 +452,8 @@ void input_event(struct input_dev *dev,
 		spin_lock_irqsave(&dev->event_lock, flags);
 		input_handle_event(dev, type, code, value);
 		spin_unlock_irqrestore(&dev->event_lock, flags);
-#ifdef CONFIG_AMAZON_METRICS_LOG
-		if (type == EV_ABS && code == ABS_MT_POSITION_Y)
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+		if (type == EV_ABS && (code == ABS_MT_POSITION_X || code == ABS_MT_POSITION_Y))
 			atomic_inc(&touch_tap_counter);
 
 		if (type == EV_KEY && code == KEY_VOLUMEDOWN)
@@ -455,6 +461,9 @@ void input_event(struct input_dev *dev,
 
 		if (type == EV_KEY && code == KEY_VOLUMEUP)
 			atomic_inc(&vol_up_counter);
+
+		if (type == EV_KEY && code == KEY_POWER)
+			atomic_inc(&pwrkey_counter);
 #endif
 	}
 }
@@ -871,16 +880,18 @@ static int input_default_setkeycode(struct input_dev *dev,
 		}
 	}
 
-	__clear_bit(*old_keycode, dev->keybit);
-	__set_bit(ke->keycode, dev->keybit);
-
-	for (i = 0; i < dev->keycodemax; i++) {
-		if (input_fetch_keycode(dev, i) == *old_keycode) {
-			__set_bit(*old_keycode, dev->keybit);
-			break; /* Setting the bit twice is useless, so break */
+	if (*old_keycode <= KEY_MAX) {
+		__clear_bit(*old_keycode, dev->keybit);
+		for (i = 0; i < dev->keycodemax; i++) {
+			if (input_fetch_keycode(dev, i) == *old_keycode) {
+				__set_bit(*old_keycode, dev->keybit);
+				/* Setting the bit twice is useless, so break */
+				break;
+			}
 		}
 	}
 
+	__set_bit(ke->keycode, dev->keybit);
 	return 0;
 }
 
@@ -936,9 +947,13 @@ int input_set_keycode(struct input_dev *dev,
 	 * Simulate keyup event if keycode is not present
 	 * in the keymap anymore
 	 */
-	if (test_bit(EV_KEY, dev->evbit) &&
-	    !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
-	    __test_and_clear_bit(old_keycode, dev->key)) {
+	if (old_keycode > KEY_MAX) {
+		dev_warn(dev->dev.parent ?: &dev->dev,
+			 "%s: got too big old keycode %#x\n",
+			 __func__, old_keycode);
+	} else if (test_bit(EV_KEY, dev->evbit) &&
+		   !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
+		   __test_and_clear_bit(old_keycode, dev->key)) {
 		struct input_value vals[] =  {
 			{ EV_KEY, old_keycode, 0 },
 			input_value_sync
@@ -2434,7 +2449,21 @@ void input_free_minor(unsigned int minor)
 }
 EXPORT_SYMBOL(input_free_minor);
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+static void metrics_count_work(struct work_struct *work)
+{
+	char buf[METRICS_STR_LEN] = {0};
+	struct delayed_work *dw = container_of(work, struct delayed_work, work);
+
+	minerva_metrics_log(buf, METRICS_STR_LEN, INPUT_MINERVA_FMT,
+			METRICS_INPUT_GROUP_ID, METRICS_INPUT_SCHEMA_ID, PREDEFINED_ESSENTIAL_KEY,
+			PREDEFINED_DEVICE_ID_KEY, PREDEFINED_CUSTOMER_ID_KEY, PREDEFINED_OS_KEY,
+			PREDEFINED_DEVICE_LANGUAGE_KEY, PREDEFINED_TZ_KEY, PREDEFINED_MODEL_KEY,
+			atomic_xchg(&pwrkey_counter, 0), atomic_xchg(&vol_up_counter, 0),
+			atomic_xchg(&vol_down_counter, 0), atomic_xchg(&touch_tap_counter, 0));
+	schedule_delayed_work(dw, 86400*HZ);
+}
+#elif defined(CONFIG_AMAZON_METRICS_LOG)
 static void metrics_count_work(struct work_struct *work)
 {
 	char buf[128] = {0};
@@ -2485,7 +2514,7 @@ static int __init input_init(void)
 		goto fail2;
 	}
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	INIT_DELAYED_WORK(&metrics_work, metrics_count_work);
 	schedule_delayed_work(&metrics_work, 0);
 #endif
@@ -2504,7 +2533,7 @@ static void __exit input_exit(void)
 				 INPUT_MAX_CHAR_DEVICES);
 	class_unregister(&input_class);
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	cancel_delayed_work(&metrics_work);
 #endif
 

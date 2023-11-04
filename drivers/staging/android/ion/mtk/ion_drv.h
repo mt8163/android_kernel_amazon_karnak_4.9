@@ -44,7 +44,6 @@ enum ION_SYS_CMDS {
 	ION_SYS_GET_CLIENT,
 	ION_SYS_SET_HANDLE_BACKTRACE,
 	ION_SYS_SET_CLIENT_NAME,
-	ION_SYS_DMA_OP,
 };
 
 enum ION_CACHE_SYNC_TYPE {
@@ -80,31 +79,17 @@ struct ion_sys_cache_sync_param {
 	enum ION_CACHE_SYNC_TYPE sync_type;
 };
 
-enum ION_DMA_TYPE {
-	ION_DMA_MAP_AREA,
-	ION_DMA_UNMAP_AREA,
-	ION_DMA_MAP_AREA_VA,
-	ION_DMA_UNMAP_AREA_VA,
-	ION_DMA_FLUSH_BY_RANGE,
-	ION_DMA_FLUSH_BY_RANGE_USE_VA,
-	ION_DMA_CACHE_FLUSH_ALL
-};
-
 enum ION_DMA_DIR {
 	ION_DMA_FROM_DEVICE,
 	ION_DMA_TO_DEVICE,
 	ION_DMA_BIDIRECTIONAL,
 };
 
-struct ion_dma_param {
-	union {
-		ion_user_handle_t handle;
-		void *kernel_handle;
-	};
-	void *va;
-	unsigned int size;
-	enum ION_DMA_TYPE dma_type;
-	enum ION_DMA_DIR dma_dir;
+enum ION_M4U_DOMAIN {
+	MM_DOMAIN,
+	VPU_DOMAIN,
+
+	DOMAIN_NUM
 };
 
 struct ion_sys_get_phys_param {
@@ -151,7 +136,6 @@ struct ion_sys_data {
 		struct ion_sys_get_client_param get_client_param;
 		struct ion_sys_client_name client_name_param;
 		struct ion_sys_record_param record_param;
-		struct ion_dma_param dma_param;
 	};
 };
 
@@ -206,6 +190,10 @@ struct ion_mm_data {
 
 #ifdef __KERNEL__
 #define ION_LOG_TAG "ion_dbg"
+/* use these can write over than 80 char message without check-service error */
+#define ion_info(string, args...)    pr_info("[ION]" string, ##args)
+#define ion_debug(string, args...)   pr_debug("[ION]" string, ##args)
+/* original message print */
 #define IONMSG(string, args...)	pr_err("[ION]"string, ##args)
 #define IONDBG(string, args...)	pr_debug("[ION]"string, ##args)
 
@@ -229,24 +217,14 @@ size_t ion_mm_heap_total_memory(void);
  * ion_mm_heap_total_memory() - get mm heap buffer detail info.
  */
 void ion_mm_heap_memory_detail(void);
-int ion_drv_create_FB_heap(ion_phys_addr_t fb_base, size_t fb_size);
 
 typedef int (ion_mm_buf_destroy_callback_t)(struct ion_buffer *buffer,
 					    unsigned int phy_addr);
 int ion_mm_heap_register_buf_destroy_cb(struct ion_buffer *buffer,
 					ion_mm_buf_destroy_callback_t *fn);
 
-int ion_cache_sync_flush_all(int fd);
-int ion_dma_map_area(int fd, ion_user_handle_t handle, int dir);
-int ion_dma_unmap_area(int fd, ion_user_handle_t handle, int dir);
-void ion_dma_map_area_va(void *start, size_t size, enum ION_DMA_DIR dir);
-void ion_dma_unmap_area_va(void *start, size_t size, enum ION_DMA_DIR dir);
-
 struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused);
 void ion_mm_heap_destroy(struct ion_heap *heap);
-
-struct ion_heap *ion_fb_heap_create(struct ion_platform_heap *heap_data);
-void ion_fb_heap_destroy(struct ion_heap *heap);
 
 int ion_device_destroy_heaps(struct ion_device *dev);
 

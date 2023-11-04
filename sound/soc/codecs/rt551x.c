@@ -28,13 +28,17 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#include  <linux/metricslog.h>
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#include <linux/metricslog.h>
 #endif
 #include <linux/of_gpio.h>
 
 #include "rt551x.h"
 #include "rt551x-spi.h"
+
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#define METRICS_LOG_MAX_SIZE 512
+#endif
 
 #define RT551X_RW_BY_SPI
 #define RT551X_USE_AMIC
@@ -1545,6 +1549,10 @@ static irqreturn_t rt551x_irq_handler(int irq, void *dev_id)
 static void rt551x_handler_work(struct work_struct *work)
 {
 	int iVdIdVal = 0, wdg_status = 0;
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+	char metrics_log_buf[METRICS_LOG_MAX_SIZE];
+#endif
+
 	struct rt551x_priv *rt551x = container_of(work, struct rt551x_priv, handler_work);
 
 	regcache_cache_bypass(rt551x->regmap, true);
@@ -1562,7 +1570,19 @@ static void rt551x_handler_work(struct work_struct *work)
 	{
 		schedule_work(&rt551x->hotword_work);
 		__pm_wakeup_event(&rt551x->vad_wake, 800);
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+		minerva_counter_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
+			VITALS_DSP_COUNTER_SCHEMA_ID, "Kernel", "Kernel",
+			"RT5514_DSP_metrics_count", "DSP_IRQ", 1, "count", NULL,
+			VITALS_NORMAL, NULL, NULL);
+
+		minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
+			"%s:%s:100:%s,%s,%s,DSP_IRQ=true;BO,DSP_RESET=false;BO,"
+			"DSP_WDT=false;BO,DSP_DATA_PROCESS_BEGIN=false;BO:us-east-1",
+			METRICS_DSP_GROUP_ID, METRICS_DSP_VOICE_SCHEMA_ID,
+			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY,
+			PREDEFINED_DEVICE_LANGUAGE_KEY);
+#elif defined(CONFIG_AMAZON_METRICS_LOG)
 		log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel","RT5514_DSP_metrics_count","DSP_IRQ", 1, "count", NULL, VITALS_NORMAL);
 
 		log_to_metrics(ANDROID_LOG_INFO, "voice_dsp", "voice_dsp:def:DSP_IRQ=1;CT;1:NR");
@@ -1570,7 +1590,19 @@ static void rt551x_handler_work(struct work_struct *work)
 	}
 	else
 	{
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+		minerva_counter_to_vitals(ANDROID_LOG_INFO, VITALS_DSP_GROUP_ID,
+			VITALS_DSP_COUNTER_SCHEMA_ID, "Kernel", "Kernel",
+			"RT5514_DSP_metrics_count", "DSP_Watchdog", 1, "count",
+			NULL, VITALS_NORMAL, NULL, NULL);
+
+		minerva_metrics_log(metrics_log_buf, METRICS_LOG_MAX_SIZE,
+			"%s:%s:100:%s,%s,%s,DSP_IRQ=false;BO,DSP_RESET=false;BO,"
+			"DSP_WDT=true;BO,DSP_DATA_PROCESS_BEGIN=false;BO:us-east-1",
+			METRICS_DSP_GROUP_ID, METRICS_DSP_VOICE_SCHEMA_ID,
+			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_DEVICE_ID_KEY,
+			PREDEFINED_DEVICE_LANGUAGE_KEY);
+#elif defined(CONFIG_AMAZON_METRICS_LOG)
 		log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel","RT5514_DSP_metrics_count","DSP_Watchdog", 1, "count", NULL, VITALS_NORMAL);
 
 		log_to_metrics(ANDROID_LOG_INFO, "voice_dsp", "voice_dsp:def:DSP_Watchdog=1;CT;1:NR");

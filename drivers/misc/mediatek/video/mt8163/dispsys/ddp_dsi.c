@@ -5413,7 +5413,7 @@ uint32_t PanelMaster_get_dsi_timing(uint32_t dsi_index,
 		struct LCM_DSI_PARAMS *dsi_params;
 
 		dsi_params = get_dsi_params_handle(dsi_index);
-		OUTREG32(&tmp_hbp, AS_UINT32(&dsi_reg->DSI_HBP_WC));
+		tmp_hbp.HBP_WC = dsi_reg->DSI_HBP_WC.HBP_WC;
 		if (dsi_params->mode == SYNC_EVENT_VDO_MODE ||
 		    dsi_params->mode == BURST_VDO_MODE)
 			return ((tmp_hbp.HBP_WC + 10) / fbconfig_dsiTmpBufBpp -

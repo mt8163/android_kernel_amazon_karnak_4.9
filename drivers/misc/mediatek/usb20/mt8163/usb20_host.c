@@ -18,7 +18,7 @@
 #include <linux/list.h>
 #include <linux/gpio.h>
 #include <linux/io.h>
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 #include <linux/power_supply.h>
 #include <mt-plat/battery_meter.h>
 #endif
@@ -56,6 +56,16 @@
 static unsigned int iddig_pin;
 static unsigned int iddig_pin_mode;
 static unsigned int iddig_if_config = 1;
+
+#ifdef CONFIG_POGO_PIN_DOCK
+static unsigned int otg_read_pin;
+static unsigned int otg_en_pin;
+static unsigned int otg_flag_pin;
+static unsigned int usb_switch_en_pin;
+static unsigned int hub_switch_en_pin;
+static unsigned int dock_det_pin;
+#endif
+
 #ifndef OTG_WITHOUT_VBUS_CHECK
 #if !defined(OTG_BOOST_BY_SWITCH_CHARGER)
 static unsigned int drvvbus_pin;
@@ -68,6 +78,24 @@ static unsigned int drvvbus_if_config = 1;
 #if !defined(CONFIG_MTK_LEGACY)
 struct pinctrl *pinctrl;
 struct pinctrl_state *pinctrl_iddig;
+#ifdef CONFIG_POGO_PIN_DOCK
+struct pinctrl_state *pinctrl_otg_read_init;
+struct pinctrl_state *pinctrl_otg_en_init;
+struct pinctrl_state *pinctrl_otg_en_high;
+struct pinctrl_state *pinctrl_otg_en_low;
+struct pinctrl_state *pinctrl_otg_flag_init;
+struct pinctrl_state *pinctrl_otg_flag_high;
+struct pinctrl_state *pinctrl_otg_flag_low;
+struct pinctrl_state *pinctrl_usb_switch_en_init;
+struct pinctrl_state *pinctrl_usb_switch_en_high;
+struct pinctrl_state *pinctrl_usb_switch_en_low;
+struct pinctrl_state *pinctrl_hub_switch_en_init;
+struct pinctrl_state *pinctrl_hub_switch_en_high;
+struct pinctrl_state *pinctrl_hub_switch_en_low;
+struct pinctrl_state *pinctrl_dock_det_init;
+struct pinctrl_state *pinctrl_dock_det_high;
+struct pinctrl_state *pinctrl_dock_det_low;
+#endif
 #ifdef CONFIG_IDDIG_CONTROL
 struct pinctrl_state *pinctrl_iddig_low;
 struct pinctrl_state *pinctrl_iddig_high;
@@ -78,6 +106,11 @@ struct pinctrl_state *pinctrl_drvvbus_high;
 #endif
 static int usb_iddig_number;
 static int last_iddig_state;
+
+#ifdef CONFIG_POGO_PIN_DOCK
+static int dock_det_number = 0;
+static int dock_vbat_ocp_number = 0;
+#endif
 
 static bool vbus_on;
 
@@ -116,7 +149,7 @@ static struct musb_fifo_cfg fifo_cfg_host[] = {
 	 MUSB_BUF_SINGLE},
 };
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 enum dock_state {
 	DOCK_NOT_PRESENT = 0,
 	DOCK_PRESENT = 1,
@@ -439,7 +472,7 @@ void switch_int_to_host_and_mask(struct musb *musb)
 	DBG(0, "swtich_int_to_host_and_mask is done\n");
 }
 
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 static struct power_supply *musb_get_bat_psy(struct musb *musb)
 {
 	if (musb->batt_psy)
@@ -472,7 +505,9 @@ static int musb_set_dock_present(struct musb *musb, bool en)
 
 	return ret;
 }
+#endif
 
+#ifdef CONFIG_USB_AMAZON_DOCK
 #define VALID_VBUS_MV 4300
 static int musb_dock_detection(void)
 {
@@ -575,6 +610,85 @@ void musb_rerun_dock_detection(void)
 }
 #endif
 
+#ifdef CONFIG_POGO_PIN_DOCK
+void musb_run_dock_detection(void)
+{
+	int dock_det_state, otg_read_state;
+
+	mutex_lock(&dock_detection_mutex);
+	dock_det_state = __gpio_get_value(dock_det_pin);
+	otg_read_state = __gpio_get_value(otg_read_pin);
+
+	pr_warn("[Dock]dock_det_state = %d, otg_read_state = %d, dock old = %d is_host = %d\n",
+		dock_det_state, otg_read_state,mtk_musb->dock_state,mtk_musb->is_host);
+	if(1 == dock_det_state) {
+		/*Dock plug out*/
+		if(DOCK_NOT_PRESENT != mtk_musb->dock_state) {
+			if(1 == mtk_musb->is_host) {
+#ifndef CONFIG_CMD_MODE_CHANGE
+				musb_platform_set_vbus(mtk_musb, 1);
+#endif
+				pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+				pinctrl_select_state(pinctrl, pinctrl_otg_en_high);
+			}else {
+				pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+				pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+			}
+			pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_low);
+			mtk_musb->dock_state = DOCK_NOT_PRESENT;
+			musb_set_dock_present(mtk_musb, false);
+			pr_warn("[Dock]%s %d, dock new = %d\n",
+				__func__, __LINE__, mtk_musb->dock_state);
+		}
+	}else {
+		/*Dock plug in*/
+		if(1 == otg_read_state) {
+			/*Dock with power*/
+			if(DOCK_PRESENT != mtk_musb->dock_state) {
+				if(1 == mtk_musb->is_host) {
+					/*USB0 with otg, NCP:out-> A change B -> A,out*/
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_high);
+#ifndef CONFIG_CMD_MODE_CHANGE
+					musb_platform_set_vbus(mtk_musb, 0);
+#endif
+				}else {
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+				}
+				pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_low);
+				mtk_musb->dock_state = DOCK_PRESENT;
+				musb_set_dock_present(mtk_musb, true);
+				pr_warn("[Dock]%s %d, dock new = %d\n",
+					__func__, __LINE__, mtk_musb->dock_state);
+			}
+		}else {
+			/*Dock without power*/
+			if(DOCK_UNPOWERED != mtk_musb->dock_state) {
+				if(1 == mtk_musb->is_host) {
+					/*USB0 with otg*/
+#ifndef CONFIG_CMD_MODE_CHANGE
+					musb_platform_set_vbus(mtk_musb, 1);
+#endif
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_high);
+				}else {
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+				}
+				pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_high);
+				mtk_musb->dock_state = DOCK_UNPOWERED;
+				musb_set_dock_present(mtk_musb, false);
+				pr_warn("[Dock]%s %d, dock new = %d\n",
+					__func__, __LINE__, mtk_musb->dock_state);
+			}
+		}
+	}
+
+	mutex_unlock(&dock_detection_mutex);
+}
+#endif
+
 static void musb_id_pin_work(struct work_struct *data)
 {
 	u8 devctl = 0;
@@ -583,6 +697,9 @@ static void musb_id_pin_work(struct work_struct *data)
 	char buf[128];
 #endif
 	int iddig_state;
+#ifdef CONFIG_POGO_PIN_DOCK
+	int otg_read_state;
+#endif
 
 #if defined(CONFIG_MTK_LEGACY)
 	iddig_state = mt_get_gpio_in(iddig_pin);
@@ -631,8 +748,21 @@ static void musb_id_pin_work(struct work_struct *data)
 		/*setup fifo for host mode */
 		ep_config_from_table_for_host(mtk_musb);
 		__pm_stay_awake(mtk_musb->usb_lock);
+
+#ifdef CONFIG_POGO_PIN_DOCK
+		otg_read_state = __gpio_get_value(otg_read_pin);
+		if (1 == otg_read_state) {
+			pinctrl_select_state(pinctrl, pinctrl_otg_flag_high);
+		}else {
+			#ifndef CONFIG_CMD_MODE_CHANGE
+			musb_platform_set_vbus(mtk_musb, 1);
+			#endif
+			pinctrl_select_state(pinctrl, pinctrl_otg_en_high);
+		}
+#else
 #ifndef CONFIG_MTK_USB_CMD_CHANGE_MODE
 		musb_platform_set_vbus(mtk_musb, 1);
+#endif
 #endif
 		/* for no VBUS sensing IP */
 #if 1
@@ -706,6 +836,10 @@ static void musb_id_pin_work(struct work_struct *data)
 #ifndef CONFIG_MTK_USB_CMD_CHANGE_MODE
 		musb_platform_set_vbus(mtk_musb, 0);
 #endif
+#ifdef CONFIG_POGO_PIN_DOCK
+		pinctrl_select_state(pinctrl,pinctrl_otg_flag_low);
+		pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+#endif
 		/* for no VBUS sensing IP */
 #if 1
 		/* USB MAC OFF */
@@ -745,6 +879,52 @@ out:
 	up(&mtk_musb->musb_lock);
 }
 
+#ifdef CONFIG_POGO_PIN_DOCK
+static void musb_dock_det_work(struct work_struct *data)
+{
+	DBG(0, "musb_dock_det_work \n");
+	musb_run_dock_detection();
+
+	if(DOCK_NOT_PRESENT != mtk_musb->dock_state) {
+		irq_set_irq_type(dock_det_number, IRQ_TYPE_LEVEL_HIGH);
+	}else {
+		irq_set_irq_type(dock_det_number, IRQ_TYPE_LEVEL_LOW);
+	}
+	enable_irq(dock_det_number);
+}
+
+static void musb_dock_vbat_ocp_work(struct work_struct *data)
+{
+	int hub_switch_en_state;
+
+	hub_switch_en_state = __gpio_get_value(hub_switch_en_pin);
+
+	pr_err("musb_dock_vbat_ocp_work hub_switch_en_state = %d \n",hub_switch_en_state);
+
+	pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_high);
+
+	enable_irq(dock_vbat_ocp_number);
+}
+
+irqreturn_t mt_usb_dock_det_int(int irq, void *dev_id)
+{
+	disable_irq_nosync(dock_det_number);
+	DBG(0, "mt_usb_dock_det_int irq= %d\n",irq);
+	schedule_delayed_work(&mtk_musb->dock_det_work, 500*HZ/1000);
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t mt_usb_dock_vbat_ocp_int(int irq, void *dev_id)
+{
+	disable_irq_nosync(dock_vbat_ocp_number);
+	DBG(0, "mt_usb_dock_vbat_ocp_int irq= %d\n",irq);
+	pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_low);
+	schedule_delayed_work(&mtk_musb->dock_vbat_ocp_work, 5000*HZ/1000);
+
+	return IRQ_HANDLED;
+}
+#endif
 
 /*static void mt_usb_ext_iddig_int(void)*/
 irqreturn_t mt_usb_ext_iddig_int(int irq, void *dev_id)
@@ -829,6 +1009,111 @@ static void otg_int_init(void)
 	pinctrl_select_state(pinctrl, pinctrl_iddig);
 	DBG(0, "usb iddig_pin %d\n", iddig_pin);
 
+#ifdef CONFIG_POGO_PIN_DOCK
+	pinctrl_dock_det_init = pinctrl_lookup_state(pinctrl, "dock_det_init");
+	if (IS_ERR(pinctrl_dock_det_init)) {
+		ret = PTR_ERR(pinctrl_dock_det_init);
+		DBG(0, "Cannot find usb pinctrl dock_det_init\n");
+	}
+
+	pinctrl_dock_det_high = pinctrl_lookup_state(pinctrl, "dock_det_high");
+	if (IS_ERR(pinctrl_dock_det_high)) {
+		ret = PTR_ERR(pinctrl_dock_det_high);
+		DBG(0, "Cannot find usb pinctrl dock_det_high\n");
+	}
+
+	pinctrl_dock_det_low = pinctrl_lookup_state(pinctrl, "dock_det_low");
+	if (IS_ERR(pinctrl_dock_det_low)) {
+		ret = PTR_ERR(pinctrl_dock_det_low);
+		DBG(0, "Cannot find usb pinctrl dock_det_low\n");
+	}
+
+	pinctrl_otg_read_init = pinctrl_lookup_state(pinctrl, "otg_read_init");
+	if (IS_ERR(pinctrl_otg_read_init)) {
+		ret = PTR_ERR(pinctrl_otg_read_init);
+		DBG(0, "Cannot find usb pinctrl otg_read_init\n");
+	}
+
+	pinctrl_otg_en_init = pinctrl_lookup_state(pinctrl, "otg_en_init");
+	if (IS_ERR(pinctrl_otg_en_init)) {
+		ret = PTR_ERR(pinctrl_otg_en_init);
+		DBG(0, "Cannot find usb pinctrl otg_en_init\n");
+	}
+
+	pinctrl_otg_en_high = pinctrl_lookup_state(pinctrl, "otg_en_high");
+	if (IS_ERR(pinctrl_otg_en_high)) {
+		ret = PTR_ERR(pinctrl_otg_en_high);
+		DBG(0, "Cannot find usb pinctrl otg_en_high\n");
+	}
+
+	pinctrl_otg_en_low = pinctrl_lookup_state(pinctrl, "otg_en_low");
+	if (IS_ERR(pinctrl_otg_en_low)) {
+		ret = PTR_ERR(pinctrl_otg_en_low);
+		DBG(0, "Cannot find usb pinctrl otg_en_low\n");
+	}
+
+	pinctrl_otg_flag_init = pinctrl_lookup_state(pinctrl, "otg_flag_init");
+	if (IS_ERR(pinctrl_otg_flag_init)) {
+		ret = PTR_ERR(pinctrl_otg_flag_init);
+		DBG(0, "Cannot find usb pinctrl otg_flag_init\n");
+	}
+
+	pinctrl_otg_flag_high = pinctrl_lookup_state(pinctrl, "otg_flag_high");
+	if (IS_ERR(pinctrl_otg_flag_high)) {
+		ret = PTR_ERR(pinctrl_otg_flag_high);
+		DBG(0, "Cannot find usb pinctrl otg_flag_high\n");
+	}
+
+	pinctrl_otg_flag_low = pinctrl_lookup_state(pinctrl, "otg_flag_low");
+	if (IS_ERR(pinctrl_otg_flag_low)) {
+		ret = PTR_ERR(pinctrl_otg_flag_low);
+		DBG(0, "Cannot find usb pinctrl otg_flag_low\n");
+	}
+
+	pinctrl_usb_switch_en_init = pinctrl_lookup_state(pinctrl, "usb_switch_en_init");
+	if (IS_ERR(pinctrl_usb_switch_en_init)) {
+		ret = PTR_ERR(pinctrl_usb_switch_en_init);
+		DBG(0, "Cannot find usb pinctrl usb_switch_en_init\n");
+	}
+
+	pinctrl_usb_switch_en_high = pinctrl_lookup_state(pinctrl, "usb_switch_en_high");
+	if (IS_ERR(pinctrl_usb_switch_en_high)) {
+		ret = PTR_ERR(pinctrl_usb_switch_en_high);
+		DBG(0, "Cannot find usb pinctrl usb_switch_en_high\n");
+	}
+
+	pinctrl_usb_switch_en_low = pinctrl_lookup_state(pinctrl, "usb_switch_en_low");
+	if (IS_ERR(pinctrl_usb_switch_en_low)) {
+		ret = PTR_ERR(pinctrl_usb_switch_en_low);
+		DBG(0, "Cannot find usb pinctrl usb_switch_en_low\n");
+	}
+
+	pinctrl_hub_switch_en_init = pinctrl_lookup_state(pinctrl, "hub_switch_en_init");
+	if (IS_ERR(pinctrl_hub_switch_en_init)) {
+		ret = PTR_ERR(pinctrl_hub_switch_en_init);
+		DBG(0, "Cannot find usb pinctrl hub_switch_en_init\n");
+	}
+
+	pinctrl_hub_switch_en_high = pinctrl_lookup_state(pinctrl, "hub_switch_en_high");
+	if (IS_ERR(pinctrl_hub_switch_en_high)) {
+		ret = PTR_ERR(pinctrl_hub_switch_en_high);
+		DBG(0, "Cannot find usb pinctrl hub_switch_en_high\n");
+	}
+
+	pinctrl_hub_switch_en_low = pinctrl_lookup_state(pinctrl, "hub_switch_en_low");
+	if (IS_ERR(pinctrl_hub_switch_en_low)) {
+		ret = PTR_ERR(pinctrl_hub_switch_en_low);
+		DBG(0, "Cannot find usb pinctrl hub_switch_en_low\n");
+	}
+
+	pinctrl_select_state(pinctrl, pinctrl_otg_read_init);
+	pinctrl_select_state(pinctrl, pinctrl_otg_en_init);
+	pinctrl_select_state(pinctrl, pinctrl_otg_flag_init);
+	pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_init);
+	pinctrl_select_state(pinctrl, pinctrl_hub_switch_en_init);
+	pinctrl_select_state(pinctrl, pinctrl_dock_det_init);
+#endif
+
 #ifdef CONFIG_IDDIG_CONTROL
 	pinctrl_iddig_low = pinctrl_lookup_state(pinctrl, "iddig_irq_low");
 	if (IS_ERR(pinctrl_iddig_low)) {
@@ -859,6 +1144,26 @@ static void otg_int_init(void)
 		DBG(0, "USB IDDIG IRQ LINE available!!\n");
 
 	last_iddig_state = 1;
+
+#ifdef CONFIG_POGO_PIN_DOCK
+	dock_det_number = __gpio_to_irq(dock_det_pin);
+	DBG(0, "usb1 dock_det_number %d\n", dock_det_number);
+	gpio_set_debounce(dock_det_pin, 200);
+	ret = request_irq(dock_det_number, mt_usb_dock_det_int, IRQF_TRIGGER_LOW, "USB1_EINT", NULL);
+	if (ret > 0)
+		DBG(0, "USB1 EINT IRQ LINE not available!!\n");
+	else
+		DBG(0, "USB1 EINT IRQ LINE available!!\n");
+
+	dock_vbat_ocp_number = __gpio_to_irq(hub_switch_en_pin);
+	DBG(0, "dock_vbat_ocp_number %d\n", dock_vbat_ocp_number);
+	gpio_set_debounce(hub_switch_en_pin, 200);
+	ret = request_irq(dock_vbat_ocp_number, mt_usb_dock_vbat_ocp_int, IRQF_TRIGGER_LOW, "DOCK_VBAT_OCP_EINT", NULL);
+	if (ret > 0)
+		DBG(0, "DOCK OCP EINT IRQ LINE not available!!\n");
+	else
+		DBG(0, "DOCK OCP EINT IRQ LINE available!!\n");
+#endif
 #endif
 #else
 	u32 phy_id_pull = 0;
@@ -896,6 +1201,39 @@ void mt_usb_otg_init(struct musb *musb)
 			iddig_if_config = 0;
 			DBG(0, "iddig_gpio fail\n");
 		}
+
+#ifdef CONFIG_POGO_PIN_DOCK
+		otg_read_pin = of_get_named_gpio(node, "otg_read_gpio", 0);
+		if (otg_read_pin == 0) {
+			DBG(0, "otg_read_gpio fail\n");
+		}
+
+		otg_en_pin = of_get_named_gpio(node, "otg_en_gpio", 0);
+		if (otg_en_pin == 0) {
+			DBG(0, "otg_en_gpio fail\n");
+		}
+
+		otg_flag_pin = of_get_named_gpio(node, "otg_flag_gpio", 0);
+		if (otg_flag_pin == 0) {
+			DBG(0, "otg_flag_gpio fail\n");
+		}
+
+		usb_switch_en_pin = of_get_named_gpio(node, "usb_switch_en_gpio", 0);
+		if (usb_switch_en_pin == 0) {
+			DBG(0, "usb_switch_en_gpio fail\n");
+		}
+
+		hub_switch_en_pin = of_get_named_gpio(node, "hub_switch_gpio", 0);
+		if (hub_switch_en_pin == 0) {
+			DBG(0, "hub_switch_en_gpio fail\n");
+		}
+
+		dock_det_pin = of_get_named_gpio(node, "dock_det_gpio", 0);
+		if (dock_det_pin == 0) {
+			DBG(0, "dock_det_gpio fail\n");
+		}
+#endif
+
 		iddig_pin_mode = of_get_named_gpio(node, "iddig_gpio", 1);
 
 #ifndef OTG_WITHOUT_VBUS_CHECK
@@ -926,6 +1264,11 @@ void mt_usb_otg_init(struct musb *musb)
 	/*init drrvbus */
 	mt_usb_init_drvvbus();
 
+#ifdef CONFIG_POGO_PIN_DOCK
+	INIT_DELAYED_WORK(&musb->dock_det_work, musb_dock_det_work);
+	INIT_DELAYED_WORK(&musb->dock_vbat_ocp_work, musb_dock_vbat_ocp_work);
+#endif
+
 	/* init idpin interrupt */
 	INIT_DELAYED_WORK(&musb->id_pin_work, musb_id_pin_work);
 	otg_int_init();
@@ -934,6 +1277,15 @@ void mt_usb_otg_init(struct musb *musb)
 	musb->fifo_cfg_host = fifo_cfg_host;
 	musb->fifo_cfg_host_size = ARRAY_SIZE(fifo_cfg_host);
 
+#if 0
+	otg_state.name = "otg_state";
+	otg_state.index = 0;
+	otg_state.state = 0;
+	if (switch_dev_register(&otg_state))
+	DBG(0, "switch_dev_register fail\n");
+	else
+	DBG(0, "switch_dev register success\n");
+#endif
 	/*
 	 *  otg_state.name = "otg_state";
 	 *  otg_state.index = 0;
@@ -945,6 +1297,70 @@ void mt_usb_otg_init(struct musb *musb)
 	 *  DBG(0, "switch_dev register success\n");
 	 */
 }
+
+#ifdef CONFIG_POGO_PIN_DOCK
+bool mt_usb1_is_dock_with_power(void)
+{
+	int dock_det, ncp3901_read, ncp3901_flag;
+
+	mutex_lock(&dock_detection_mutex);
+	dock_det = __gpio_get_value(dock_det_pin);
+	ncp3901_read = __gpio_get_value(otg_read_pin);
+	ncp3901_flag = __gpio_get_value(otg_flag_pin);
+
+	DBG(0, "dock_det= %d, ncp3901_read= %d, ncp3901_flag= %d, dock_state= %d, is_host= %d\n",
+		dock_det, ncp3901_read, ncp3901_flag, mtk_musb->dock_state, mtk_musb->is_host);
+
+	if(0 == dock_det) {
+		/*Dock plug in*/
+		if(1 == ncp3901_read) {
+			/*Dock with power*/
+			if(DOCK_PRESENT != mtk_musb->dock_state) {
+				if(1 == mtk_musb->is_host) {
+					/*USB0 with otg, NCP:out-> A change B -> A,out*/
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_high);
+				#ifndef CONFIG_CMD_MODE_CHANGE
+					musb_platform_set_vbus(mtk_musb, 0);
+				#endif
+				}else {
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+				}
+				pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_low);
+				mtk_musb->dock_state = DOCK_PRESENT;
+				musb_set_dock_present(mtk_musb, true);
+				pr_warn("[Dock]%s %d, dock new = %d\n",
+					__func__, __LINE__, mtk_musb->dock_state);
+			}
+		}else {
+			/*Dock without power*/
+			if(DOCK_UNPOWERED != mtk_musb->dock_state) {
+				if(1 == mtk_musb->is_host) {
+					/*USB0 with otg*/
+				#ifndef CONFIG_CMD_MODE_CHANGE
+					musb_platform_set_vbus(mtk_musb, 1);
+				#endif
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_high);
+				}else {
+					pinctrl_select_state(pinctrl, pinctrl_otg_flag_low);
+					pinctrl_select_state(pinctrl, pinctrl_otg_en_low);
+				}
+				pinctrl_select_state(pinctrl, pinctrl_usb_switch_en_high);
+				mtk_musb->dock_state = DOCK_UNPOWERED;
+				musb_set_dock_present(mtk_musb, false);
+				pr_warn("[Dock]%s %d, dock new = %d\n",
+					__func__, __LINE__, mtk_musb->dock_state);
+			}
+		}
+	}
+	mutex_unlock(&dock_detection_mutex);
+
+	return (DOCK_PRESENT == mtk_musb->dock_state);
+}
+#endif
+
 #else
 
 /* for not define CONFIG_USB_MTK_OTG */
@@ -984,5 +1400,10 @@ void switch_int_to_host_and_mask(struct musb *musb)
 void musb_session_restart(struct musb *musb)
 {
 }
-
+#ifdef CONFIG_POGO_PIN_DOCK
+bool mt_usb1_is_dock_with_power(void)
+{
+	return 0;
+}
+#endif
 #endif

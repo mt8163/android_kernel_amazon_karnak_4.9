@@ -83,7 +83,7 @@ static unsigned long timer_pos;
 #define LONG_PWRKEY_PRESS_TIME	500000000
 #endif
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 #include <linux/metricslog.h>
 static struct work_struct metrics_work;
 static bool pwrkey_press;
@@ -809,19 +809,27 @@ static irqreturn_t watchdog_int_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
-#define PWRKEY_METRICS_STR_LEN 128
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#define PWRKEY_METRICS_STR_LEN 512
 static void pwrkey_log_to_metrics(struct work_struct *data)
 {
 	char *action;
 	char buf[PWRKEY_METRICS_STR_LEN];
-
 	action = (pwrkey_press) ? "press" : "release";
+
+#if defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
+	minerva_metrics_log(buf, PWRKEY_METRICS_STR_LEN,
+		"%s:%s:100:%s,report_action_is_action=%s;SY:us-east-1",
+		METRICS_PWRKEY_GROUP_ID, METRICS_PWRKEY_SCHEMA_ID,
+		PREDEFINED_ESSENTIAL_KEY, action);
+#endif
+
+#if defined (CONFIG_AMAZON_METRICS_LOG)
 	snprintf(buf, PWRKEY_METRICS_STR_LEN,
 		"%s:powi%c:report_action_is_%s=1;CT;1:NR", __func__,
 		action[0], action);
 	log_to_metrics(ANDROID_LOG_INFO, "PowerKeyEvent", buf);
-
+#endif
 }
 #endif
 
@@ -863,7 +871,7 @@ static irqreturn_t pwrkey_int_handler(int irq, void *dev_id)
 		chip->pressed = 1;
 		pr_notice("[pwrkey_int_handler] Press pwrkey\n");
 #if defined(CONFIG_MTK_KERNEL_POWER_OFF_CHARGING)
-		#if defined(CONFIG_rbc123) || defined(CONFIG_MTK_PMIC_KPOC_LONGPRESS_TIME_0MS) || defined(CONFIG_MTK_PMIC_KPOC_ONETOUCH)
+		#if defined(CONFIG_abe123) || defined(CONFIG_MTK_PMIC_KPOC_LONGPRESS_TIME_0MS) || defined(CONFIG_MTK_PMIC_KPOC_ONETOUCH)
 		if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT) {
 			pr_notice
 				("Power Key Pressed during kpoc, reboot\r\n");
@@ -884,7 +892,7 @@ static irqreturn_t pwrkey_int_handler(int irq, void *dev_id)
 		upmu_set_rg_pwrkey_int_sel(1);
 	}
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	if (chip->pressed == 1)
 		pwrkey_press = true;
 	else
@@ -1820,7 +1828,7 @@ static int pmic_mt6323_probe(struct platform_device *dev)
 	chip->long_press_pwrkey_shutdown_timer.function =
 	lp_pwrkey_shutdown_timer_func;
 
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	INIT_WORK(&metrics_work, pwrkey_log_to_metrics);
 #endif
 

@@ -29,14 +29,17 @@
 #include "mt_freqhopping_drv.h"
 
 #define SUPPORT_SLT_TEST 0
+#define FREQHOPPING_DEBUG_PROC 0
 #define FREQ_HOPPING_DEVICE "mt-freqhopping"
 #define FH_PLL_COUNT (g_p_fh_hal_drv->pll_cnt)
 
 static struct mt_fh_hal_driver *g_p_fh_hal_drv;
 static struct fh_pll_t *g_fh_drv_pll;
 static unsigned int g_drv_pll_count;
+#if FREQHOPPING_DEBUG_PROC
 static int mt_freqhopping_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg);
+#endif
 
 #ifdef CONFIG_OF
 static const struct of_device_id mt_fhctl_of_match[] = {
@@ -159,6 +162,7 @@ static const struct file_operations slt_test_fops = {
 };
 #endif /* SUPPORT_SLT_TEST */
 
+#if FREQHOPPING_DEBUG_PROC
 static int freqhopping_dumpregs_proc_open(struct inode *inode
 	, struct file *file)
 {
@@ -394,6 +398,7 @@ static int mt_freqhopping_ioctl(struct file *file, unsigned int cmd,
 	/* FH_MSG("Exit"); */
 	return ret;
 }
+#endif /* FREQHOPPING_DEBUG_PROC */
 
 int mt_freqhopping_devctl(unsigned int cmd, void *args)
 {
@@ -456,6 +461,7 @@ EXPORT_SYMBOL(mt_fh_popod_restore);
 #define PROC_FH_(FOLDER) \
 	"/proc/freqhopping/"#FOLDER
 
+#if FREQHOPPING_DEBUG_PROC
 static int freqhopping_debug_proc_init(void)
 {
 	struct proc_dir_entry *prdumpregentry;
@@ -517,6 +523,7 @@ static int freqhopping_debug_proc_init(void)
 #endif /* SUPPORT_SLT_TEST */
 	return 0;
 }
+#endif /* FREQHOPPING_DEBUG_PROC */
 
 int freqhopping_config(unsigned int pll_id
 	, unsigned long vco_freq, unsigned int enable)
@@ -588,9 +595,11 @@ static int mt_freqhopping_init(void)
 
 	platform_driver_register(&freqhopping_driver);
 
+#if FREQHOPPING_DEBUG_PROC
 	ret = freqhopping_debug_proc_init();
 	if (ret != 0)
 		return ret;
+#endif
 
 	pr_info("[FH]: init success\n");
 

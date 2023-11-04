@@ -14,9 +14,16 @@ config USB_AMAZON_DOCK
 	depends on USB_MTK_HDRC
 	default n
 	help
-	  Say Y here if you want to support Amazon dock (Zeus),
+	  Say Y here if you want to support Amazon dock (abc123),
 	  which is a Amazon special Dock, it's different with
 	  ACA Dock.
+
+config POGO_PIN_DOCK
+	tristate "Pogo Pin Dock Support"
+	depends on USB_MTK_HDRC
+	default n
+	help
+	  Say Y here if you want to support Pogo pin Dock (kayak).
 
 config MTK_MUSB_QMU_SUPPORT
 	bool "QMU Transfer mode of MediaTek MUSB"
@@ -39,10 +46,14 @@ config MTK_USB_CMD_CHANGE_MODE
 config USB_MTK_OTG
 	bool "MediaTek MUSB OTG support"
 	help
-	  Enable Mediatek USB Host OTG detection mechanism
-	  and USB-IF Compliance Test Program.
+	  Enable Mediatek USB Host OTG detection mechanism.
 	  1. IDDIG - OTG cable attachment detection.
 	  2. DRVVBUS - provides the VBUS for the attached devices
+
+config USB_MTK_OTG_IF
+	bool "MediaTek USB-IF test support"
+	help
+	  Enable Mediatek USB-IF Compliance Test Program.
 
 config USB_MTK_CHARGER_DETECT
 	bool "MediaTek MUSB charger detect"

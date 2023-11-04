@@ -202,7 +202,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(scope),
 	POWER_SUPPLY_ATTR(charge_term_current),
 	POWER_SUPPLY_ATTR(calibrate),
-#ifdef CONFIG_USB_AMAZON_DOCK
+#if (defined CONFIG_USB_AMAZON_DOCK) || (defined CONFIG_POGO_PIN_DOCK)
 	POWER_SUPPLY_ATTR(dock_present),
 #endif
 	/* Local extensions */

@@ -88,9 +88,9 @@ struct mtkts_bts_channel_param {
 #include "inc/mtk_ts_board_abc123.h"
 #elif defined(CONFIG_THERMAL_abh123)
 #include "inc/mtk_ts_board_abh123.h"
-#elif defined(CONFIG_THERMAL_rbc123)
-#include "inc/mtk_ts_board_rbc123.h"
-#elif defined(CONFIG_THERMAL_abc123)
+#elif defined(CONFIG_THERMAL_abe123)
+#include "inc/mtk_ts_board_abe123.h"
+#elif defined(CONFIG_THERMAL_sbc123)
 #include "inc/mtk_ts_board_abh123.h"
 #elif defined(CONFIG_THERMAL_abg123)
 #include "inc/mtk_ts_board_abg123.h"
@@ -98,6 +98,8 @@ struct mtkts_bts_channel_param {
 #include "inc/mtk_ts_board_karnak.h"
 #elif defined(CONFIG_THERMAL_abc123)
 #include "inc/mtk_ts_board_abc123.h"
+#elif defined(CONFIG_THERMAL_KAYAK)
+#include "inc/mtk_ts_board_kayak.h"
 #elif defined(CONFIG_THERMAL_abc123)
 #include "inc/mtk_ts_board_abc123.h"
 #else

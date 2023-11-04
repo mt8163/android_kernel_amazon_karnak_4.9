@@ -22,6 +22,11 @@
 #define ARY_SIZE(x) (sizeof((x)) / sizeof((x[0])))
 #endif
 
+#if defined(CONFIG_AMAZON_METRICS_LOG) || defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#include <linux/metricslog.h>
+#define METRICS_STR_LEN 512
+#endif
+
 /* ------------------------------------------------------------------------- */
 
 /* common enumerations */

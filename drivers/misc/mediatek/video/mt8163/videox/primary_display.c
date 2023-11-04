@@ -61,6 +61,7 @@
 #include "ddp_ovl.h"
 #include "ddp_path.h"
 #include "ddp_reg.h"
+#include "ddp_gamma.h"
 #include "mtk_sync.h"
 #include "mtkfb_fence.h"
 
@@ -81,6 +82,11 @@
 #include "tz_cross/ta_mem.h"
 #include "tz_cross/trustzone.h"
 #include <tz_cross/tz_ddp.h>
+#endif
+
+#if defined(CONFIG_AMAZON_MINERVA_METRICS_LOG)
+#include <linux/metricslog.h>
+#define METRICS_STR_LEN 512
 #endif
 
 typedef int (*fence_release_callback) (unsigned int data);
@@ -2201,7 +2207,7 @@ free_decouple_sec_buffer(KREE_SECUREMEM_HANDLE mem_handle)
 static struct disp_internal_buffer_info *allocat_decouple_buffer(int size)
 {
 	void *buffer_va = NULL;
-	unsigned int buffer_mva = 0;
+	ion_phys_addr_t buffer_mva = 0;
 	size_t mva_size = 0;
 	struct ion_client *client = NULL;
 	struct ion_handle *handle = NULL;
@@ -2246,7 +2252,7 @@ static struct disp_internal_buffer_info *allocat_decouple_buffer(int size)
 			return NULL;
 		}
 
-		ion_phys(client, handle, (ion_phys_addr_t *)&buffer_mva,
+		ion_phys(client, handle, &buffer_mva,
 			 &mva_size);
 		if (buffer_mva == 0) {
 			DISPERR("Fatal Error, get mva failed\n");
@@ -2256,7 +2262,7 @@ static struct disp_internal_buffer_info *allocat_decouple_buffer(int size)
 			return NULL;
 		}
 		buf_info->handle = handle;
-		buf_info->mva = buffer_mva;
+		buf_info->mva = (unsigned int)buffer_mva;
 		buf_info->size = mva_size;
 		buf_info->va = buffer_va;
 	} else {
@@ -2484,7 +2490,7 @@ static int __build_path_decouple(void)
 
 	{
 		unsigned long *pSrc;
-		unsigned int src_mva;
+		ion_phys_addr_t src_mva;
 		unsigned int size, tmp_size;
 
 		struct ion_mm_data mm_data;
@@ -2564,7 +2570,7 @@ static int __build_path_decouple(void)
 				}
 
 				ion_phys(ion_client, src_handle,
-					 (ion_phys_addr_t *)&src_mva,
+					 &src_mva,
 					 (size_t *)&tmp_size);
 				if (!src_mva) {
 					DISPERR(
@@ -2576,7 +2582,7 @@ static int __build_path_decouple(void)
 					return -1;
 				}
 				buf->handle = src_handle;
-				buf->mva = src_mva;
+				buf->mva = (unsigned int)src_mva;
 				buf->size = tmp_size;
 				pgc->dc_buf[i] = buf->mva;
 				dc_vAddr[i] = (unsigned long)pSrc;
@@ -3817,6 +3823,16 @@ int primary_display_esd_recovery(void)
 {
 	enum DISP_STATUS ret = DISP_STATUS_OK;
 	struct LCM_PARAMS *lcm_param = NULL;
+
+#ifdef CONFIG_AMAZON_MINERVA_METRICS_LOG
+	char buf[METRICS_STR_LEN] = {0};
+
+	minerva_metrics_log(buf, METRICS_STR_LEN,
+			"%s:%s:100:%s,%s,%s,%s,lcm_state=recovery;SY,ESD_Recovery=1;IN:us-east-1",
+			METRICS_LCD_GROUP_ID, METRICS_LCD_SCHEMA_ID,
+			PREDEFINED_ESSENTIAL_KEY, PREDEFINED_MODEL_KEY,
+			PREDEFINED_TZ_KEY, PREDEFINED_DEVICE_LANGUAGE_KEY);
+#endif
 
 	DISPFUNC();
 	dprec_logger_start(DPREC_LOGGER_ESD_RECOVERY, 0, 0);
@@ -6764,6 +6780,8 @@ int primary_display_config_input_multiple(
 	int ret = 0;
 	unsigned int wdma_mva = 0;
 	void *disp_handle = NULL;
+	cmdqRecHandle cmdq_handle;
+	struct disp_ccorr_config m_ccorr_config = session_input->ccorr_config;
 #ifdef CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT
 	bool is_sec = false;
 	int i = 0;
@@ -6814,6 +6832,11 @@ int primary_display_config_input_multiple(
 	}
 #endif
 
+	if (_is_decouple_mode(pgc->session_mode))
+		cmdq_handle = pgc->cmdq_handle_ovl1to2_config;
+	else
+		cmdq_handle = pgc->cmdq_handle_config;
+
 	if (_is_decouple_mode(pgc->session_mode) &&
 	    !_is_mirror_mode(pgc->session_mode)) {
 		pgc->dc_buf_id++;
@@ -6835,6 +6858,13 @@ int primary_display_config_input_multiple(
 		mmprofile_log_ex(ddp_mmp_get_events()->primary_wdma_config,
 				 MMPROFILE_FLAG_PULSE, pgc->dc_buf_id,
 				 wdma_mva);
+	}
+
+	/* set ccorr matrix */
+	if (m_ccorr_config.is_dirty) {
+		disp_ccorr_set_color_matrix(cmdq_handle,
+					    m_ccorr_config.color_matrix,
+					    m_ccorr_config.mode);
 	}
 done:
 	_primary_path_unlock(__func__);

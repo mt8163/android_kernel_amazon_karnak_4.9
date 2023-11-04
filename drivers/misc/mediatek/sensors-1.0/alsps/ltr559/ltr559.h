@@ -87,7 +87,7 @@
 #define LTR559_IOCTL_READ_ALS_INT	_IOR(LTR559_IOCTL_MAGIC, 5, char *)
 
 /* Power On response time in ms */
-#define PON_DELAY	600
+#define PON_DELAY	120
 #define WAKEUP_DELAY	10
 
 #define ltr559_SUCCESS						0

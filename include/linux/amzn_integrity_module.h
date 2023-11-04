@@ -21,13 +21,26 @@
 #define STRESS_STRING_BUFF_SIZE    ((2*STRESS_REPORT_PERIOD/STRESS_PERIOD) + 1)
 
 #define INTEGRITY_BATTERY_MODULE   "integrity_batt"
-#define STRESS_PULSE_DEBUG_STRING  "integrity_batt:def:PULSEDEBUG=1;CT;1,stressFrame=%d;CT;1,stressPeriod=%d;CT;1,Vol=%d;CT;1,temp=%d;CT;1,stress=%s;DV;1,iVer=%d;CT;1:NA"
-#define STRESS_REPORT_STRING       "integrity_batt:def:BattStress=1;CT;1,stress_period=%d;CT;1,stress=%s;DV;1,iVer=%d;CT;1:NA"
-#define CHARGE_STATE_REPORT_STRING "integrity_batt:def:UNLOAD=1;CT;1,Charger_status=%d;CT;1,Elaps_Sec=%ld;CT;1,iVol=%d;CT;1,fVol=%d;CT;1,lVol=%d;CT;1,iSOC=%d;CT;1,Bat_aTemp=%d;CT;1,Vir_aTemp=%d;CT;1,Bat_pTemp=%d;CT;1,Vir_pTemp=%d;CT;1,bTemp=%d;CT;1,Cycles=%d;CT;1,pVUsb=%d;CT;1,fVUsb=%d;CT;1,mVUsb=%d;CT;1,aVUsb=%d;CT;1,aVol=%d;CT;1,fSOC=%d;CT;1,ct=%lu;CT;1,iVer=%d;CT;1:NA"
-#define CHARGE_STATE_DEBUG_STRING  "integrity_batt:def:ThreadLocal=1;CT;1,Charger_status=%d;CT;1,AvgVbatt=%d;CT;1,AvgVUSB=%d;CT;1,mVUsb=%d;CT;1,n_count=%d;CT;1,Elaps_Sec=%ld;CT;1,Bat_vTemp=%d;CT;1,elaps_sec=%ld;CT;1,elaps_sec_start=%ld;CT;1,elaps_sec_prev=%ld;CT;1,delta_elaps_sec=%ld;CT;1,calc_elaps_sec=%ld;CT;1:NA"
-#define SOC_CORNER_95_STRING       "integrity_batt:def:time_soc95=1;CT;1,Elaps_Sec=%ld;CT;1:NA"
-#define SOC_CORNER_15_1_STRING     "integrity_batt:def:time_soc15_soc20=1;CT;1,Init_Vol=%d;CT;1,Init_SOC=%d;CT;1,Elaps_Sec=%ld;CT;1:NA"
-#define SOC_CORNER_15_2_STRING     "integrity_batt:def:time_soc15_soc0=1;CT;1,Init_Vol=%d;CT;1,Init_SOC=%d;CT;1,Elaps_Sec=%ld;CT;1:NA"
+#define INTEGRITY_METRICS_REGION    "us-east-1"
+#define INTEGRITY_METRICS_SAMPLING  "100"
+#define INTEGRITY_METRICS_PREDEFINED_FIELDS "_deviceId=;SY,_softwareVersion=;SY,_platform=;SY,_model=;SY,_deviceType=;SY,_countryOfResidence=;SY,"
+
+#define INTEGRITY_BATTERY_GROUP    "gr263bbh"
+#define STRESS_PULSE_DEBUG_SCHEMA  "w8t9/2/07330400"
+#define STRESS_REPORT_SCHEMA       "r71b/2/0c330401"
+#define CHARGE_STATE_REPORT_SCHEMA "2iop/2/0c330401"
+#define CHARGE_STATE_DEBUG_SCHEMA  "uolx/2/07330400"
+#define SOC_CORNER_95_SCHEMA       "ghc6/2/05330401"
+#define SOC_CORNER_15_1_SCHEMA     "3ujh/2/05330401"
+#define SOC_CORNER_15_2_SCHEMA     "k28i/2/05330401"
+
+#define STRESS_PULSE_DEBUG_STRING  "PULSEDEBUG=1;IN,stressFrame=%d;IN,stressPeriod=%d;IN,Vol=%d;IN,temp=%d;IN,stress=%s;SY,iVer=%d;IN"
+#define STRESS_REPORT_STRING       "BattStress=1;IN,stress_period=%d;IN,stress=%s;SY,iVer=%d;IN"
+#define CHARGE_STATE_REPORT_STRING "UNLOAD=1;IN,Charger_status=%d;IN,Elaps_Sec=%ld;IN,iVol=%d;IN,fVol=%d;IN,lVol=%d;IN,iSOC=%d;IN,Bat_aTemp=%d;IN,Vir_aTemp=%d;IN,Bat_pTemp=%d;IN,Vir_pTemp=%d;IN,bTemp=%d;IN,Cycles=%d;IN,pVUsb=%d;IN,fVUsb=%d;IN,mVUsb=%d;IN,aVUsb=%d;IN,aVol=%d;IN,fSOC=%d;IN,ct=%lu;IN,iVer=%d;IN"
+#define CHARGE_STATE_DEBUG_STRING  "ThreadLocal=1;IN,Charger_status=%d;IN,AvgVbatt=%d;IN,AvgVUSB=%d;IN,mVUsb=%d;IN,n_count=%d;IN,Elaps_Sec=%ld;IN,Bat_vTemp=%d;IN,elaps_sec=%ld;IN,elaps_sec_start=%ld;IN,elaps_sec_prev=%ld;IN,delta_elaps_sec=%ld;IN,calc_elaps_sec=%ld;IN"
+#define SOC_CORNER_95_STRING       "time_soc95=1;IN,Elaps_Sec=%ld;IN"
+#define SOC_CORNER_15_1_STRING     "time_soc15_soc20=1;IN,Init_Vol=%d;IN,Init_SOC=%d;IN,Elaps_Sec=%ld;IN"
+#define SOC_CORNER_15_2_STRING     "time_soc15_soc0=1;IN,Init_Vol=%d;IN,Init_SOC=%d;IN,Elaps_Sec=%ld;IN"
 
 
 enum battery_metrics_info {

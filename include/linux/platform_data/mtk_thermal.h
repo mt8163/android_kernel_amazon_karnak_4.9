@@ -13,7 +13,7 @@ struct virtual_sensor_thermal_zone {
 	struct thermal_zone_device *tz;
 	struct work_struct therm_work;
 	struct mtk_thermal_platform_data *pdata;
-#ifdef CONFIG_AMAZON_METRICS_LOG
+#if defined (CONFIG_AMAZON_METRICS_LOG) || defined (CONFIG_AMAZON_MINERVA_METRICS_LOG)
 	atomic_t query_count;
 	unsigned int mask;
 #endif
@@ -33,7 +33,7 @@ struct cooler_sort_list{
 	struct list_head list;
 };
 
-#ifdef CONFIG_rbc123
+#ifdef CONFIG_abe123
 struct cdev_t {
 	char type[THERMAL_NAME_LENGTH];
 	unsigned long upper;
@@ -45,7 +45,7 @@ struct trip_t {
 	unsigned long temp;
 	enum thermal_trip_type type;
 	unsigned long hyst;
-#ifdef CONFIG_rbc123
+#ifdef CONFIG_abe123
 	struct cdev_t cdev[THERMAL_MAX_TRIPS];
 #endif
 };

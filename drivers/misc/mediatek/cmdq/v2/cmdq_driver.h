@@ -14,8 +14,9 @@
 #ifndef __CMDQ_DRIVER_H__
 #define __CMDQ_DRIVER_H__
 
-#include "cmdq_def.h"
 #include <linux/kernel.h>
+#include <linux/fs.h>
+#include "cmdq_def.h"
 
 struct cmdqUsageInfoStruct {
 	uint32_t count
@@ -71,25 +72,8 @@ struct cmdqWriteAddressStruct {
 
 #define CMDQ_IOCTL_LOCK_MUTEX _IOW(CMDQ_IOCTL_MAGIC_NUMBER, 1, int)
 #define CMDQ_IOCTL_UNLOCK_MUTEX _IOR(CMDQ_IOCTL_MAGIC_NUMBER, 2, int)
-#define CMDQ_IOCTL_EXEC_COMMAND                                                \
-	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 3, struct cmdqCommandStruct)
 #define CMDQ_IOCTL_QUERY_USAGE                                                 \
 	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 4, struct cmdqUsageInfoStruct)
-
-/*  */
-/* Async operations */
-/*  */
-#define CMDQ_IOCTL_ASYNC_JOB_EXEC                                              \
-	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 5, struct cmdqJobStruct)
-#define CMDQ_IOCTL_ASYNC_JOB_WAIT_AND_CLOSE                                    \
-	_IOR(CMDQ_IOCTL_MAGIC_NUMBER, 6, struct cmdqJobResultStruct)
-
-#define CMDQ_IOCTL_ALLOC_WRITE_ADDRESS                                         \
-	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 7, struct cmdqWriteAddressStruct)
-#define CMDQ_IOCTL_FREE_WRITE_ADDRESS                                          \
-	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 8, struct cmdqWriteAddressStruct)
-#define CMDQ_IOCTL_READ_ADDRESS_VALUE                                          \
-	_IOW(CMDQ_IOCTL_MAGIC_NUMBER, 9, struct cmdqReadAddressStruct)
 
 /*  */
 /* Chip capability query. output parameter is a bit field. */
@@ -109,4 +93,10 @@ struct cmdqWriteAddressStruct {
 /*  */
 #define CMDQ_IOCTL_NOTIFY_ENGINE _IOW(CMDQ_IOCTL_MAGIC_NUMBER, 12, uint64_t)
 
+s32 cmdq_driver_ioctl_query_usage(struct file *pf, unsigned long param);
+s32 cmdq_driver_ioctl_query_cap_bits(unsigned long param);
+s32 cmdq_driver_ioctl_query_dts(unsigned long param);
+s32 cmdq_driver_ioctl_notify_engine(unsigned long param);
+
+void cmdq_driver_dump_readback(u32 *addrs, u32 count, u32 *values);
 #endif /* __CMDQ_DRIVER_H__ */

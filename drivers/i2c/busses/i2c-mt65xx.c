@@ -751,8 +751,11 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 		i2c->ignore_restart_irq = false;
 
 	while (left_num--) {
-		if (!msgs->buf) {
-			dev_dbg(i2c->dev, "data buffer is NULL.\n");
+		if ((!msgs->buf) || (msgs->len == 0)) {
+			if (!msgs->buf)
+				dev_dbg(i2c->dev, "data buffer is NULL.\n");
+			else
+				dev_dbg(i2c->dev, "Message length is 0.\n");
 			ret = -EINVAL;
 			goto err_exit;
 		}

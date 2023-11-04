@@ -313,6 +313,15 @@ extern struct LCM_DRIVER jd9367_wxga_dsi_vdo_karnak_fiti_inx_lcm_drv;
 extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_karnak_fiti_txd_lcm_drv;
 extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_karnak_fiti_starry_lcm_drv;
 extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_karnak_fiti_kd_lcm_drv;
+extern struct LCM_DRIVER nt35521_wxga_dsi_vdo_kayak_kd_lcm_drv;
+extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_kayak_fiti_tpv_lcm_drv;
+extern struct LCM_DRIVER jd9367_wxga_dsi_vdo_kayak_fiti_kd_lcm_drv;
+extern struct LCM_DRIVER jd9365_wxga_dsi_vdo_kayak_fiti_kd_hsd_lcm_drv;
+extern struct LCM_DRIVER jd9367_wxga_dsi_vdo_kayak_fiti_inx_lcm_drv;
+extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_kayak_fiti_txd_lcm_drv;
+extern struct LCM_DRIVER jd9366_wxga_dsi_vdo_kayak_fiti_starry_lcm_drv;
+extern struct LCM_DRIVER jd9365d_wxga_dsi_vdo_kayak_fiti_tah_kd_lcm_drv;
+extern struct LCM_DRIVER ili9881c_wxga_dsi_vdo_kayak_ili_kd_hsd_lcm_drv;
 
 #ifdef BUILD_LK
 extern void mdelay(unsigned long msec);
