@@ -1,0 +1,13 @@
+menu "Amazon"
+
+config AMAZON_METRICS_STUB
+	tristate "Amazon Metrics Stub"
+	default n
+	---help---
+	  Say Y here if you want to enable Amazon Metrics Stub.
+	  This is only needed if your prebuilt kernel modules depend on the
+	  now removed metrics framework.
+
+	  If unsure, say N.
+
+endmenu
