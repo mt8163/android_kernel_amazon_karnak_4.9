@@ -5060,13 +5060,16 @@ static int compute_energy(struct energy_env *eenv)
 		struct sched_group *sg_shared_cap = NULL;
 		int cpu = cpumask_first(&visit_cpus);
 		struct sched_domain *sd;
+
 		sd = rcu_dereference_check_sched_domain(cpu_rq(cpu)->sd);
 		if (!sd) {
 			/* a corner racing with hotplug?
 			 * sd doesn't exist in this cpu.
 			 */
+
 			return -EINVAL;
 		}
+
 		/*
 		 * Is the group utilization affected by cpus outside this
 		 * sched_group?
@@ -5133,6 +5136,7 @@ static int compute_energy(struct energy_env *eenv)
 					cpumask_xor(&visit_cpus, &visit_cpus, sched_group_cpus(sg));
 					cpu_count--;
 				}
+
 #ifdef CONFIG_MTK_SCHED_EAS_POWER_SUPPORT
 				/*
 				 * We try to get correct energy estimation
@@ -5142,10 +5146,14 @@ static int compute_energy(struct energy_env *eenv)
 				if (only_lv1_sd)
 					return 0;
 #endif
+
 				if (cpumask_equal(sched_group_cpus(sg), sched_group_cpus(eenv->sg_top)) &&
 					sd->child)
+					goto next_cpu;
+
 			} while (sg = sg->next, sg != sd->groups);
 		}
+
 		/*
 		 * If we raced with hotplug and got an sd NULL-pointer;
 		 * returning a wrong energy estimation is better than
