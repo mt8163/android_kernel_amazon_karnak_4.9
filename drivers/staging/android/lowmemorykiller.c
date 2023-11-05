@@ -467,24 +467,6 @@ static void lowmem_trigger_warning(struct task_struct *selected,
 	__lowmem_trigger_warning(selected);
 }
 
-/* try to dump more memory status */
-static void dump_memory_status(short selected_oom_score_adj)
-{
-	static DEFINE_RATELIMIT_STATE(ratelimit, 5 * HZ, 1);
-	static DEFINE_RATELIMIT_STATE(ratelimit_urgent, 2 * HZ, 1);
-
-	if (selected_oom_score_adj > lowmem_warn_adj &&
-	    !__ratelimit(&ratelimit))
-		return;
-
-	if (!__ratelimit(&ratelimit_urgent))
-		return;
-
-	show_task_mem();
-	show_free_areas(0);
-	oom_dump_extra_info();
-}
-
 static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
