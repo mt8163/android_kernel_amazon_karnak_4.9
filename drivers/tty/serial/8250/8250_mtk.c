@@ -622,6 +622,51 @@ static int mtk8250_remove(struct platform_device *pdev)
 
 	return 0;
 }
+#ifdef CONFIG_PM_SLEEP
+int mtk8250_request_to_sleep(void)
+{
+	int i = 0;
+	int line = 0;
+	int sleep_req;
+	struct uart_8250_port *up;
+	struct mtk8250_data *data;
+
+	for (line = 0; line < CONFIG_SERIAL_8250_NR_UARTS; line++) {
+		up = serial8250_get_port(line);
+
+		if (up->port.dev == NULL)
+			continue;
+		if (dev_get_drvdata(up->port.dev) == NULL) {
+			pr_debug("[UART%d] no need sleep\n", line);
+			continue;
+		}
+
+		data = dev_get_drvdata(up->port.dev);
+		if (data->clk_count <= 0U) {
+			pr_debug("[UART%d] clock is off[%d]\n",
+				up->port.line, data->clk_count);
+			continue;
+		}
+
+		/* request UART to sleep */
+		sleep_req = serial_in(up, MTK_UART_SLEEP_REQ);
+		serial_out(up, MTK_UART_SLEEP_REQ,
+			sleep_req | MTK_UART_SEND_SLEEP_REQ);
+
+		/* wait for UART to ACK */
+		while ((serial_in(up, MTK_UART_SLEEP_ACK) & BIT(0U)) !=
+			MTK_UART_SLEEP_ACK_IDLE) {
+			if (i++ >= MTK_UART_WAIT_ACK_TIMES) {
+				serial_out(up, MTK_UART_SLEEP_REQ, sleep_req);
+				pr_err("CANNOT GET UART%d SLEEP ACK\n", line);
+				return -EBUSY;
+			}
+			udelay(10);
+		}
+	}
+
+	return 0;
+}
 EXPORT_SYMBOL(mtk8250_request_to_sleep);
 
 int mtk8250_request_to_wakeup(void)
@@ -801,7 +846,7 @@ static int __maybe_unused mtk8250_resume(struct device *dev)
 
 	return 0;
 }
-
+#endif /* CONFIG_PM_SLEEP */
 static const struct dev_pm_ops mtk8250_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mtk8250_suspend, mtk8250_resume)
 	SET_RUNTIME_PM_OPS(mtk8250_runtime_suspend, mtk8250_runtime_resume,
