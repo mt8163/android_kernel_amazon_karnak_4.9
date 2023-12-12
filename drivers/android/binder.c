@@ -5241,35 +5241,6 @@ static int binder_open(struct inode *nodp, struct file *filp)
 			&binder_proc_fops);
 	}
 
-	if (binder_binderfs_dir_entry_proc) {
-		char strbuf[11];
-		struct dentry *binderfs_entry;
-
-		snprintf(strbuf, sizeof(strbuf), "%u", proc->pid);
-		/*
-		 * Similar to debugfs, the process specific log file is shared
-		 * between contexts. If the file has already been created for a
-		 * process, the following binderfs_create_file() call will
-		 * fail with error code EEXIST if another context of the same
-		 * process invoked binder_open(). This is ok since same as
-		 * debugfs, the log file will contain information on all
-		 * contexts of a given PID.
-		 */
-		binderfs_entry = binderfs_create_file(binder_binderfs_dir_entry_proc,
-			strbuf, &proc_fops, (void *)(unsigned long)proc->pid);
-		if (!IS_ERR(binderfs_entry)) {
-			proc->binderfs_entry = binderfs_entry;
-		} else {
-			int error;
-
-			error = PTR_ERR(binderfs_entry);
-			if (error != -EEXIST) {
-				pr_warn("Unable to create file %s in binderfs (error %d)\n",
-					strbuf, error);
-			}
-		}
-	}
-
 	return 0;
 }
 
