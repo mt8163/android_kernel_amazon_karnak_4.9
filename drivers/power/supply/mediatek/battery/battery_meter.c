@@ -353,7 +353,7 @@ void fgauge_get_profile_id(void)
 }
 bool get_battery_id_status(void)
 {
-	int ret, id_volt;
+	int ret, id_volt = 0;
 	bool id_connect = true;
 
 	ret = get_pin_id_volt(batt_meter_cust_data.battery_id_channel_number,
