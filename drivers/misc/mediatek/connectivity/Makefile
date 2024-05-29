@@ -30,6 +30,15 @@ ifneq ($(KERNELRELEASE),)
     obj-y += $(MODULE_NAME).o
     $(MODULE_NAME)-objs += common/connectivity_build_in_adapter.o
     $(MODULE_NAME)-objs += common/wmt_build_in_adapter.o
+    export MTK_COMBO_CHIP=CONSYS_8163
+    export MTK_WLAN_SERVICE=yes
+
+
+obj-y += wlan/core/gen2/
+obj-y += bt/mt66xx/
+obj-y += wlan/adaptor/
+obj-y += common/
+
 
 # Otherwise we were called directly from the command line;
 # invoke the kernel build system.
