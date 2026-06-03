@@ -1731,6 +1731,13 @@ static int parse_cgroupfs_options(char *data, struct cgroup_sb_opts *opts)
 			opts->flags |= CGRP_ROOT_NOPREFIX;
 			continue;
 		}
+		if (!strcmp(token, "cpuset_v2_mode")) {
+			/* Accepted as no-op. The option was introduced in 4.20
+			 * to make v1 cpuset preserve cpus_allowed across hotplug.
+			 * Android libprocessgroup passes this option unconditionally;
+			 * without accepting it, the required cpuset mount fails. */
+			continue;
+		}
 		if (!strcmp(token, "clone_children")) {
 			opts->cpuset_clone_children = true;
 			continue;
@@ -2111,8 +2118,17 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		cgroup_enable_task_cg_lists();
 
 	if (is_v2) {
-		if (data) {
-			pr_err("cgroup2: unknown option \"%s\"\n", (char *)data);
+		char *opts = data;
+		char *token;
+
+		while ((token = strsep(&opts, ",")) != NULL) {
+			if (!*token ||
+			    !strcmp(token, "memory_recursiveprot") ||
+			    !strcmp(token, "nsdelegate") ||
+			    !strcmp(token, "memory_localevents"))
+				continue;
+
+			pr_err("cgroup2: unknown option \"%s\"\n", token);
 			put_cgroup_ns(ns);
 			return ERR_PTR(-EINVAL);
 		}
